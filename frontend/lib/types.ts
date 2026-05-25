@@ -5,7 +5,7 @@ export type KeywordExpansion = {
   chinese_keywords: string[];
   variation_keywords: string[];
   confidence: number;
-  source: "deterministic_v1";
+  source: "deterministic_v1" | "openai_compatible";
 };
 
 export type SearchJob = {

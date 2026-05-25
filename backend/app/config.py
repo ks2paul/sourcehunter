@@ -1,0 +1,22 @@
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", validation_alias="OPENAI_BASE_URL")
+    openai_model: str = Field(default="gpt-4.1-mini", validation_alias="OPENAI_MODEL")
+    ai_keyword_expansion_enabled: bool = Field(default=True, validation_alias="AI_KEYWORD_EXPANSION_ENABLED")
+
+    model_config = SettingsConfigDict(
+        env_file=(".env.local", "../.env.local"),
+        extra="ignore",
+        populate_by_name=True,
+    )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

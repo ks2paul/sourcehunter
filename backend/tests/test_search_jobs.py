@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -5,7 +6,8 @@ from app.models import SearchJobCreate, SupplierPreference
 from app.storage import SearchJobRepository
 
 
-def test_search_job_repository_creates_completed_job():
+@pytest.mark.anyio
+async def test_search_job_repository_creates_completed_job():
     repository = SearchJobRepository()
     request = SearchJobCreate(
         product_keyword="handheld fan",
@@ -15,7 +17,7 @@ def test_search_job_repository_creates_completed_job():
         product_image_id=None,
     )
 
-    job = repository.create(request)
+    job = await repository.create(request)
 
     assert job.job_id.startswith("job_")
     assert job.status == "completed"
@@ -70,3 +72,18 @@ def test_get_search_job_api_returns_404_for_missing_job():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Search job not found"
+
+
+def test_get_raw_listings_returns_empty_foundation_result():
+    client = TestClient(app)
+    created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/raw-listings")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "job_id": created["job_id"],
+        "status": "scraping_not_enabled",
+        "listings": [],
+        "failures": [],
+    }

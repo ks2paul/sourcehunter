@@ -1,3 +1,8 @@
+import json
+
+import httpx
+
+from app.config import Settings, get_settings
 from app.models import KeywordExpansion
 
 KNOWN_EXPANSIONS = {
@@ -61,7 +66,7 @@ KNOWN_EXPANSIONS = {
 }
 
 
-def expand_keywords(product_keyword: str) -> KeywordExpansion:
+def deterministic_expand_keywords(product_keyword: str) -> KeywordExpansion:
     normalized = product_keyword.strip().lower()
     if normalized in KNOWN_EXPANSIONS:
         return KNOWN_EXPANSIONS[normalized]
@@ -73,3 +78,74 @@ def expand_keywords(product_keyword: str) -> KeywordExpansion:
         confidence=0.35,
         source="deterministic_v1",
     )
+
+
+class OpenAICompatibleKeywordExpander:
+    def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
+        self.settings = settings
+        self.client = client
+
+    async def expand(self, product_keyword: str) -> KeywordExpansion:
+        close_client = self.client is None
+        client = self.client or httpx.AsyncClient(timeout=30)
+        try:
+            response = await client.post(
+                f"{self.settings.openai_base_url.rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.settings.openai_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.settings.openai_model,
+                    "temperature": 0.2,
+                    "response_format": {"type": "json_object"},
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You expand product sourcing terminology for procurement. "
+                                "Return only JSON with english_keywords, chinese_keywords, "
+                                "variation_keywords, and confidence. Do not invent suppliers, "
+                                "prices, contacts, URLs, or company names."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Product keyword: {product_keyword.strip()}",
+                        },
+                    ],
+                },
+            )
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            payload = json.loads(content)
+            return KeywordExpansion(
+                english_keywords=_clean_keyword_list(payload.get("english_keywords"), product_keyword),
+                chinese_keywords=_clean_keyword_list(payload.get("chinese_keywords"), None),
+                variation_keywords=_clean_keyword_list(payload.get("variation_keywords"), None),
+                confidence=float(payload.get("confidence", 0.7)),
+                source="openai_compatible",
+            )
+        finally:
+            if close_client:
+                await client.aclose()
+
+
+def _clean_keyword_list(value: object, fallback: str | None) -> list[str]:
+    if not isinstance(value, list):
+        return [fallback] if fallback else []
+    cleaned = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    if not cleaned and fallback:
+        return [fallback]
+    return cleaned[:10]
+
+
+async def expand_keywords(product_keyword: str, settings: Settings | None = None) -> KeywordExpansion:
+    settings = settings or get_settings()
+    if settings.ai_keyword_expansion_enabled and settings.openai_api_key:
+        try:
+            return await OpenAICompatibleKeywordExpander(settings=settings).expand(product_keyword)
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return deterministic_expand_keywords(product_keyword)
+
+    return deterministic_expand_keywords(product_keyword)

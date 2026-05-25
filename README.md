@@ -42,6 +42,38 @@ Health check:
 http://localhost:8000/health
 ```
 
+Search job API:
+
+```text
+POST http://localhost:8000/api/search-jobs
+GET  http://localhost:8000/api/search-jobs/{job_id}
+GET  http://localhost:8000/api/search-jobs/{job_id}/raw-listings
+```
+
+### AI Keyword Expansion
+
+SourceHunter supports OpenAI-compatible keyword expansion through local environment variables:
+
+```bash
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4.1-mini
+AI_KEYWORD_EXPANSION_ENABLED=true
+```
+
+If no API key is configured, or if the provider call fails, the backend falls back to deterministic keyword expansion. It does not fabricate supplier data.
+
+### Playwright
+
+The backend includes a Playwright-ready scraping framework. Platform adapters are intentionally not enabled yet.
+
+Install browser binaries only when working on real platform adapters:
+
+```bash
+cd backend
+.venv/bin/python -m playwright install chromium
+```
+
 ### Frontend
 
 ```bash
@@ -81,4 +113,4 @@ npm run build
 
 ## Foundation Build Limitation
 
-The first runnable build creates search jobs and expands sourcing keywords. Supplier scraping, supplier deduplication, supplier scoring, and real contact extraction are intentionally deferred to later implementation plans.
+The current build creates search jobs, expands sourcing keywords, and exposes a Playwright-ready scraping worker boundary. Real 1688 and Made-in-China scraping, supplier deduplication, supplier scoring, and real contact extraction are intentionally deferred until platform adapters are implemented and verified.

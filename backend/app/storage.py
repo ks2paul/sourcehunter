@@ -8,10 +8,10 @@ class SearchJobRepository:
     def __init__(self) -> None:
         self._jobs: dict[str, SearchJob] = {}
 
-    def create(self, request: SearchJobCreate) -> SearchJob:
+    async def create(self, request: SearchJobCreate) -> SearchJob:
         now = utc_now()
         job_id = f"job_{uuid4().hex}"
-        keyword_expansion = expand_keywords(request.product_keyword)
+        keyword_expansion = await expand_keywords(request.product_keyword)
         job = SearchJob(
             job_id=job_id,
             product_keyword=request.product_keyword.strip(),

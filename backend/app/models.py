@@ -32,7 +32,7 @@ class KeywordExpansion(BaseModel):
     chinese_keywords: list[str]
     variation_keywords: list[str]
     confidence: float = Field(ge=0, le=1)
-    source: Literal["deterministic_v1"]
+    source: Literal["deterministic_v1", "openai_compatible"]
 
 
 class SearchProgress(BaseModel):
@@ -52,6 +52,13 @@ class SearchJob(BaseModel):
     created_at: datetime
     updated_at: datetime
     error_summary: str | None = None
+
+
+class RawListingsResponse(BaseModel):
+    job_id: str
+    status: str
+    listings: list[dict]
+    failures: list[dict]
 
 
 def utc_now() -> datetime:
