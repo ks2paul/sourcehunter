@@ -61,5 +61,12 @@ class RawListingsResponse(BaseModel):
     failures: list[dict[str, Any]]
 
 
+class SuppliersResponse(BaseModel):
+    job_id: str
+    status: str
+    suppliers: list[dict[str, Any]]
+    failures: list[dict[str, Any]]
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

@@ -1,4 +1,4 @@
-import type { CreateSearchJobPayload, RawListingsResponse, SearchJob } from "./types";
+import type { CreateSearchJobPayload, RawListingsResponse, SearchJob, SuppliersResponse } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -23,6 +23,16 @@ export async function getRawListings(jobId: string): Promise<RawListingsResponse
 
   if (!response.ok) {
     throw new Error(`Raw listing request failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function getUniqueSuppliers(jobId: string): Promise<SuppliersResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/search-jobs/${jobId}/suppliers`);
+
+  if (!response.ok) {
+    throw new Error(`Supplier request failed with status ${response.status}`);
   }
 
   return response.json();

@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-import { createSearchJob, getRawListings } from "@/lib/api";
-import type { RawListingsResponse, SearchJob, SupplierPreference } from "@/lib/types";
+import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
+import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse } from "@/lib/types";
 
 const supplierPreferences: SupplierPreference[] = ["Factory Preferred", "Factory Only", "Any Supplier"];
 
@@ -13,8 +13,10 @@ export default function HomePage() {
   const [moqPreference, setMoqPreference] = useState("");
   const [supplierPreference, setSupplierPreference] = useState<SupplierPreference>("Factory Preferred");
   const [job, setJob] = useState<SearchJob | null>(null);
+  const [suppliers, setSuppliers] = useState<SuppliersResponse | null>(null);
   const [rawListings, setRawListings] = useState<RawListingsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingSuppliers, setIsFetchingSuppliers] = useState(false);
   const [isFetchingListings, setIsFetchingListings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,7 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     setJob(null);
+    setSuppliers(null);
     setRawListings(null);
 
     try {
@@ -38,6 +41,23 @@ export default function HomePage() {
       setError(requestError instanceof Error ? requestError.message : "Search request failed");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleFetchSuppliers() {
+    if (!job) {
+      return;
+    }
+    setIsFetchingSuppliers(true);
+    setError(null);
+    setSuppliers(null);
+
+    try {
+      setSuppliers(await getUniqueSuppliers(job.job_id));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Supplier request failed");
+    } finally {
+      setIsFetchingSuppliers(false);
     }
   }
 
@@ -161,14 +181,76 @@ export default function HomePage() {
               <KeywordList title="Chinese keywords" items={job.keyword_expansion.chinese_keywords} />
               <KeywordList title="Variation keywords" items={job.keyword_expansion.variation_keywords} />
 
-              <button
-                type="button"
-                onClick={handleFetchRawListings}
-                className="rounded bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-                disabled={isFetchingListings}
-              >
-                {isFetchingListings ? "Fetching Made-in-China..." : "Fetch Made-in-China raw listings"}
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleFetchSuppliers}
+                  className="rounded bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                  disabled={isFetchingSuppliers}
+                >
+                  {isFetchingSuppliers ? "Finding suppliers..." : "Find top 5 unique suppliers"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFetchRawListings}
+                  className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  disabled={isFetchingListings}
+                >
+                  {isFetchingListings ? "Fetching raw listings..." : "Fetch raw listings"}
+                </button>
+              </div>
+
+              {suppliers ? (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-800">Top 5 unique suppliers</h3>
+                  {suppliers.failures.length > 0 ? (
+                    <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                      {suppliers.failures.map((failure) => (
+                        <p key={`${failure.platform}-${failure.error_type}`}>
+                          {failure.platform}: {failure.message}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {suppliers.suppliers.length > 0 ? (
+                    <div className="space-y-3">
+                      {suppliers.suppliers.map((supplier) => {
+                        const leadProduct = supplier.products[0];
+                        return (
+                          <article key={supplier.supplier_id} className="rounded border border-slate-200 p-3">
+                            <div className="text-xs uppercase tracking-wide text-slate-500">
+                              {supplier.platforms.join(", ")} · {supplier.listing_count} listing
+                              {supplier.listing_count === 1 ? "" : "s"}
+                            </div>
+                            <h4 className="mt-1 text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
+                            <p className="mt-2 text-sm text-slate-600">
+                              Lead product: {leadProduct?.product_name ?? "Product Name Unavailable"}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-600">
+                              Price: {leadProduct?.price ?? "Price Unavailable"} · MOQ:{" "}
+                              {leadProduct?.moq ?? "MOQ Unavailable"}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                              {supplier.supplier_url ? (
+                                <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
+                                  Supplier
+                                </a>
+                              ) : null}
+                              {leadProduct?.product_url ? (
+                                <a className="text-blue-700 underline" href={leadProduct.product_url} target="_blank">
+                                  Product
+                                </a>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">No unique suppliers returned.</p>
+                  )}
+                </div>
+              ) : null}
 
               {rawListings ? (
                 <div className="space-y-3">

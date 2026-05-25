@@ -59,3 +59,26 @@ export type RawListingsResponse = {
     message: string;
   }>;
 };
+
+export type UniqueSupplier = {
+  supplier_id: string;
+  company_name: string;
+  supplier_url: string | null;
+  platforms: string[];
+  listing_count: number;
+  products: Array<{
+    product_name: string | null;
+    product_url: string | null;
+    price: string | null;
+    moq: string | null;
+    platform: string;
+    source_url: string;
+  }>;
+};
+
+export type SuppliersResponse = {
+  job_id: string;
+  status: "completed" | "no_results";
+  suppliers: UniqueSupplier[];
+  failures: RawListingsResponse["failures"];
+};
