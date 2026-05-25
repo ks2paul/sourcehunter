@@ -1,10 +1,13 @@
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
+*.egg-info/
 .venv/
 venv/
 .env
 .env.*
+!.env.example
 
 # Node / Next.js
 node_modules/
@@ -20,8 +23,16 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 
+# Coverage
+.coverage
+htmlcov/
+coverage/
+
+# Local data
+*.sqlite3
+*.db
+
 # OS / editors
 .DS_Store
 .idea/
 .vscode/
-
