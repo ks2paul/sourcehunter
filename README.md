@@ -72,7 +72,7 @@ If no API key is configured, or if the provider call fails, the backend falls ba
 
 ### Playwright
 
-The backend includes a Playwright scraping framework and a Made-in-China adapter for source-backed raw listings.
+The backend includes a Playwright scraping framework, a Made-in-China adapter for source-backed raw listings, and a conservative 1688 adapter. If 1688 blocks automation with a verification challenge, SourceHunter records a scrape failure instead of fabricating supplier data.
 
 Install browser binaries only when working on real platform adapters:
 
@@ -120,10 +120,10 @@ npm run build
 
 ## Current Build
 
-The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
+The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, attempts 1688 retrieval with anti-bot detection, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
 
 Known limitations:
 
-- 1688 is not implemented yet.
+- 1688 often blocks browser automation with human verification; blocked attempts are reported as failures.
 - Supplier contact extraction is only shown when reliable public data is available.
 - Factory-only filtering is conservative: if factory status cannot be verified, SourceHunter returns fewer or zero results instead of guessing.

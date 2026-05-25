@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.deduplication import deduplicate_suppliers
 from app.models import RawListingsResponse, SearchJob, SearchJobCreate, SuppliersResponse
+from app.scraping.platforms.china_1688 import China1688Adapter
 from app.scraping.platforms.made_in_china import MadeInChinaAdapter
 from app.scraping.worker import ScrapingWorker
 from app.storage import SearchJobRepository
@@ -11,7 +12,7 @@ repository = SearchJobRepository()
 
 
 def create_scraping_worker() -> ScrapingWorker:
-    return ScrapingWorker(adapters=[MadeInChinaAdapter()])
+    return ScrapingWorker(adapters=[MadeInChinaAdapter(), China1688Adapter()])
 
 
 @router.post("", response_model=SearchJob, status_code=status.HTTP_201_CREATED)
