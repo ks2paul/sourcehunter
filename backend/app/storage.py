@@ -21,7 +21,7 @@ class SearchJobRepository:
             status=SearchJobStatus.COMPLETED,
             progress=SearchProgress(
                 stage="keyword_expansion_completed",
-                message="Keyword expansion completed. Supplier scraping is not enabled in the foundation build.",
+                message="Keyword expansion completed. Made-in-China raw listing retrieval is available.",
             ),
             keyword_expansion=keyword_expansion,
             created_at=now,

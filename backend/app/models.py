@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -57,8 +57,8 @@ class SearchJob(BaseModel):
 class RawListingsResponse(BaseModel):
     job_id: str
     status: str
-    listings: list[dict]
-    failures: list[dict]
+    listings: list[dict[str, Any]]
+    failures: list[dict[str, Any]]
 
 
 def utc_now() -> datetime:

@@ -32,3 +32,30 @@ export type CreateSearchJobPayload = {
   supplier_preference: SupplierPreference;
   product_image_id: string | null;
 };
+
+export type RawListing = {
+  platform: string;
+  source_url: string;
+  product_url: string | null;
+  supplier_url: string | null;
+  raw_product_name: string | null;
+  raw_company_name: string | null;
+  raw_price: string | null;
+  raw_moq: string | null;
+  raw_location: string | null;
+  raw_years_in_business: string | null;
+  raw_contact_text: string | null;
+  scraped_at: string;
+};
+
+export type RawListingsResponse = {
+  job_id: string;
+  status: "completed" | "no_results";
+  listings: RawListing[];
+  failures: Array<{
+    platform: string;
+    keyword: string;
+    error_type: string;
+    message: string;
+  }>;
+};

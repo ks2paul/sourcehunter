@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-import { createSearchJob } from "@/lib/api";
-import type { SearchJob, SupplierPreference } from "@/lib/types";
+import { createSearchJob, getRawListings } from "@/lib/api";
+import type { RawListingsResponse, SearchJob, SupplierPreference } from "@/lib/types";
 
 const supplierPreferences: SupplierPreference[] = ["Factory Preferred", "Factory Only", "Any Supplier"];
 
@@ -13,7 +13,9 @@ export default function HomePage() {
   const [moqPreference, setMoqPreference] = useState("");
   const [supplierPreference, setSupplierPreference] = useState<SupplierPreference>("Factory Preferred");
   const [job, setJob] = useState<SearchJob | null>(null);
+  const [rawListings, setRawListings] = useState<RawListingsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingListings, setIsFetchingListings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -21,6 +23,7 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     setJob(null);
+    setRawListings(null);
 
     try {
       const createdJob = await createSearchJob({
@@ -38,6 +41,22 @@ export default function HomePage() {
     }
   }
 
+  async function handleFetchRawListings() {
+    if (!job) {
+      return;
+    }
+    setIsFetchingListings(true);
+    setError(null);
+
+    try {
+      setRawListings(await getRawListings(job.job_id));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Raw listing request failed");
+    } finally {
+      setIsFetchingListings(false);
+    }
+  }
+
   return (
     <main className="min-h-screen">
       <section className="border-b border-slate-200 bg-white">
@@ -47,7 +66,7 @@ export default function HomePage() {
             <p className="text-sm text-slate-600">Supplier discovery foundation build</p>
           </div>
           <span className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-sm text-amber-900">
-            Scraping disabled in foundation build
+            Made-in-China raw listings enabled
           </span>
         </div>
       </section>
@@ -141,6 +160,66 @@ export default function HomePage() {
               <KeywordList title="English keywords" items={job.keyword_expansion.english_keywords} />
               <KeywordList title="Chinese keywords" items={job.keyword_expansion.chinese_keywords} />
               <KeywordList title="Variation keywords" items={job.keyword_expansion.variation_keywords} />
+
+              <button
+                type="button"
+                onClick={handleFetchRawListings}
+                className="rounded bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                disabled={isFetchingListings}
+              >
+                {isFetchingListings ? "Fetching Made-in-China..." : "Fetch Made-in-China raw listings"}
+              </button>
+
+              {rawListings ? (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-800">Raw listings</h3>
+                  {rawListings.failures.length > 0 ? (
+                    <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                      {rawListings.failures.map((failure) => (
+                        <p key={`${failure.platform}-${failure.error_type}`}>
+                          {failure.platform}: {failure.message}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {rawListings.listings.length > 0 ? (
+                    <div className="space-y-3">
+                      {rawListings.listings.map((listing) => (
+                        <article
+                          key={`${listing.platform}-${listing.product_url}`}
+                          className="rounded border border-slate-200 p-3"
+                        >
+                          <div className="text-xs uppercase tracking-wide text-slate-500">{listing.platform}</div>
+                          <h4 className="mt-1 text-sm font-semibold text-slate-950">
+                            {listing.raw_product_name ?? "Product Name Unavailable"}
+                          </h4>
+                          <p className="mt-1 text-sm text-slate-700">
+                            {listing.raw_company_name ?? "Company Name Unavailable"}
+                          </p>
+                          <p className="mt-2 text-sm text-slate-600">
+                            Price: {listing.raw_price ?? "Price Unavailable"} · MOQ:{" "}
+                            {listing.raw_moq ?? "MOQ Unavailable"}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                            {listing.product_url ? (
+                              <a className="text-blue-700 underline" href={listing.product_url} target="_blank">
+                                Product
+                              </a>
+                            ) : null}
+                            {listing.supplier_url ? (
+                              <a className="text-blue-700 underline" href={listing.supplier_url} target="_blank">
+                                Supplier
+                              </a>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">No reliable raw listings returned.</p>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>

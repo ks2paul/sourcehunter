@@ -74,16 +74,39 @@ def test_get_search_job_api_returns_404_for_missing_job():
     assert response.json()["detail"] == "Search job not found"
 
 
-def test_get_raw_listings_returns_empty_foundation_result():
+def test_get_raw_listings_returns_source_backed_result(monkeypatch):
+    from app.scraping.models import RawListing, ScrapeResult
+    from app.routes import search_jobs
+
+    class FakeWorker:
+        async def search_all(self, keyword: str) -> ScrapeResult:
+            assert keyword == "handheld fan"
+            return ScrapeResult(
+                listings=[
+                    RawListing(
+                        platform="Made-in-China",
+                        source_url="https://www.made-in-china.com/products-search/hot-china-products/Handheld_Fan.html",
+                        product_url="https://supplier-a.en.made-in-china.com/product/abc.html",
+                        supplier_url="https://supplier-a.en.made-in-china.com/",
+                        raw_product_name="Rechargeable Turbo Mini Fan",
+                        raw_company_name="Shenzhen Realmark Industrial Co., Ltd.",
+                        raw_price="US$3.50-4.50",
+                        raw_moq="1,000 Pieces (MOQ)",
+                    )
+                ],
+                failures=[],
+            )
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
     client = TestClient(app)
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
 
     response = client.get(f"/api/search-jobs/{created['job_id']}/raw-listings")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "job_id": created["job_id"],
-        "status": "scraping_not_enabled",
-        "listings": [],
-        "failures": [],
-    }
+    payload = response.json()
+    assert payload["job_id"] == created["job_id"]
+    assert payload["status"] == "completed"
+    assert payload["listings"][0]["platform"] == "Made-in-China"
+    assert payload["listings"][0]["raw_company_name"] == "Shenzhen Realmark Industrial Co., Ltd."
+    assert payload["failures"] == []
