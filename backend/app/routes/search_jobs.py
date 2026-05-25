@@ -48,7 +48,13 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Search job not found")
 
     scrape_result = await create_scraping_worker().search_all(job.product_keyword)
-    suppliers = deduplicate_suppliers(scrape_result.listings)
+    suppliers = deduplicate_suppliers(
+        scrape_result.listings,
+        product_keyword=job.product_keyword,
+        target_price=job.target_price,
+        moq_preference=job.moq_preference,
+        supplier_preference=job.supplier_preference,
+    )
     return SuppliersResponse(
         job_id=job.job_id,
         status="completed" if suppliers else "no_results",

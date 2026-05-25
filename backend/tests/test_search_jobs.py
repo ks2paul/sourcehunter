@@ -160,4 +160,44 @@ def test_get_unique_suppliers_deduplicates_raw_listings(monkeypatch):
     assert supplier["supplier_id"].startswith("sup_")
     assert supplier["company_name"] == "Shenzhen Realmark Industrial Co., Ltd."
     assert supplier["listing_count"] == 2
+    assert supplier["supplier_type"] == "Supplier Type Unknown"
+    assert supplier["supplier_score"] > 0
+    assert supplier["recommended_action"]
+    assert supplier["recommendation_reasons"]
     assert [product["product_name"] for product in supplier["products"]] == ["Handheld Fan A", "Handheld Fan B"]
+
+
+def test_get_unique_suppliers_honors_factory_only_without_guessing(monkeypatch):
+    from app.scraping.models import RawListing, ScrapeResult
+    from app.routes import search_jobs
+
+    class FakeWorker:
+        async def search_all(self, keyword: str) -> ScrapeResult:
+            return ScrapeResult(
+                listings=[
+                    RawListing(
+                        platform="Made-in-China",
+                        source_url="https://www.made-in-china.com/search",
+                        product_url="https://supplier-a.en.made-in-china.com/product/one.html",
+                        supplier_url="https://supplier-a.en.made-in-china.com/",
+                        raw_product_name="Handheld Fan A",
+                        raw_company_name="Shenzhen Industrial Co., Ltd.",
+                        raw_price="US$3.50",
+                        raw_moq="1,000 Pieces (MOQ)",
+                    )
+                ],
+                failures=[],
+            )
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
+    client = TestClient(app)
+    created = client.post(
+        "/api/search-jobs",
+        json={"product_keyword": "handheld fan", "supplier_preference": "Factory Only"},
+    ).json()
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "no_results"
+    assert response.json()["suppliers"] == []

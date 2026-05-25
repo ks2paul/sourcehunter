@@ -63,9 +63,14 @@ export type RawListingsResponse = {
 export type UniqueSupplier = {
   supplier_id: string;
   company_name: string;
+  supplier_type: string;
   supplier_url: string | null;
   platforms: string[];
   listing_count: number;
+  supplier_score: number;
+  score_breakdown: Record<string, number>;
+  recommendation_reasons: string[];
+  recommended_action: string;
   products: Array<{
     product_name: string | null;
     product_url: string | null;

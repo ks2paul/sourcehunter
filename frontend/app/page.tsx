@@ -1,11 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
+import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
 import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse } from "@/lib/types";
 
 const supplierPreferences: SupplierPreference[] = ["Factory Preferred", "Factory Only", "Any Supplier"];
+const supplierSortModes: Array<{ label: string; value: SupplierSortMode }> = [
+  { label: "Highest Score", value: "highest_score" },
+  { label: "Lowest Price", value: "lowest_price" },
+  { label: "Lowest MOQ", value: "lowest_moq" },
+];
 
 export default function HomePage() {
   const [productKeyword, setProductKeyword] = useState("handheld fan");
@@ -18,7 +24,12 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingSuppliers, setIsFetchingSuppliers] = useState(false);
   const [isFetchingListings, setIsFetchingListings] = useState(false);
+  const [supplierSortMode, setSupplierSortMode] = useState<SupplierSortMode>("highest_score");
   const [error, setError] = useState<string | null>(null);
+  const sortedSuppliers = useMemo(
+    () => (suppliers ? sortSuppliers(suppliers.suppliers, supplierSortMode) : []),
+    [suppliers, supplierSortMode],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -214,7 +225,23 @@ export default function HomePage() {
                   ) : null}
                   {suppliers.suppliers.length > 0 ? (
                     <div className="space-y-3">
-                      {suppliers.suppliers.map((supplier) => {
+                      <div className="flex flex-wrap gap-2">
+                        {supplierSortModes.map((mode) => (
+                          <button
+                            type="button"
+                            key={mode.value}
+                            onClick={() => setSupplierSortMode(mode.value)}
+                            className={`rounded border px-3 py-1 text-sm ${
+                              supplierSortMode === mode.value
+                                ? "border-slate-950 bg-slate-950 text-white"
+                                : "border-slate-300 bg-white text-slate-700"
+                            }`}
+                          >
+                            {mode.label}
+                          </button>
+                        ))}
+                      </div>
+                      {sortedSuppliers.map((supplier) => {
                         const leadProduct = supplier.products[0];
                         return (
                           <article key={supplier.supplier_id} className="rounded border border-slate-200 p-3">
@@ -222,7 +249,15 @@ export default function HomePage() {
                               {supplier.platforms.join(", ")} · {supplier.listing_count} listing
                               {supplier.listing_count === 1 ? "" : "s"}
                             </div>
-                            <h4 className="mt-1 text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
+                            <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
+                                <p className="mt-1 text-xs text-slate-500">{supplier.supplier_type}</p>
+                              </div>
+                              <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+                                Score {supplier.supplier_score}
+                              </div>
+                            </div>
                             <p className="mt-2 text-sm text-slate-600">
                               Lead product: {leadProduct?.product_name ?? "Product Name Unavailable"}
                             </p>
@@ -230,6 +265,14 @@ export default function HomePage() {
                               Price: {leadProduct?.price ?? "Price Unavailable"} · MOQ:{" "}
                               {leadProduct?.moq ?? "MOQ Unavailable"}
                             </p>
+                            <p className="mt-2 text-sm font-medium text-slate-800">
+                              Action: {supplier.recommended_action}
+                            </p>
+                            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                              {supplier.recommendation_reasons.slice(0, 3).map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                            </ul>
                             <div className="mt-2 flex flex-wrap gap-3 text-sm">
                               {supplier.supplier_url ? (
                                 <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
