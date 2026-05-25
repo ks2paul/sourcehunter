@@ -48,6 +48,13 @@ Search job API:
 POST http://localhost:8000/api/search-jobs
 GET  http://localhost:8000/api/search-jobs/{job_id}
 GET  http://localhost:8000/api/search-jobs/{job_id}/raw-listings
+GET  http://localhost:8000/api/search-jobs/{job_id}/suppliers
+```
+
+Search jobs are persisted to SQLite by default:
+
+```bash
+SOURCEHUNTER_DB_PATH=data/sourcehunter.sqlite3
 ```
 
 ### AI Keyword Expansion
@@ -65,7 +72,7 @@ If no API key is configured, or if the provider call fails, the backend falls ba
 
 ### Playwright
 
-The backend includes a Playwright-ready scraping framework. Platform adapters are intentionally not enabled yet.
+The backend includes a Playwright scraping framework and a Made-in-China adapter for source-backed raw listings.
 
 Install browser binaries only when working on real platform adapters:
 
@@ -111,6 +118,12 @@ cd frontend
 npm run build
 ```
 
-## Foundation Build Limitation
+## Current Build
 
-The current build creates search jobs, expands sourcing keywords, and exposes a Playwright-ready scraping worker boundary. Real 1688 and Made-in-China scraping, supplier deduplication, supplier scoring, and real contact extraction are intentionally deferred until platform adapters are implemented and verified.
+The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
+
+Known limitations:
+
+- 1688 is not implemented yet.
+- Supplier contact extraction is only shown when reliable public data is available.
+- Factory-only filtering is conservative: if factory status cannot be verified, SourceHunter returns fewer or zero results instead of guessing.

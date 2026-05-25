@@ -26,6 +26,22 @@ async def test_search_job_repository_creates_completed_job():
     assert "手持风扇" in job.keyword_expansion.chinese_keywords
 
 
+@pytest.mark.anyio
+async def test_search_job_repository_persists_jobs_across_instances(tmp_path):
+    db_path = tmp_path / "sourcehunter.sqlite3"
+    first_repository = SearchJobRepository(db_path=db_path)
+    request = SearchJobCreate(product_keyword="picture frame")
+
+    created = await first_repository.create(request)
+    second_repository = SearchJobRepository(db_path=db_path)
+
+    loaded = second_repository.get(created.job_id)
+    assert loaded is not None
+    assert loaded.job_id == created.job_id
+    assert loaded.product_keyword == "picture frame"
+    assert "相框" in loaded.keyword_expansion.chinese_keywords
+
+
 def test_search_job_repository_returns_none_for_missing_job():
     repository = SearchJobRepository()
 

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openai_base_url: str = Field(default="https://api.openai.com/v1", validation_alias="OPENAI_BASE_URL")
     openai_model: str = Field(default="gpt-4.1-mini", validation_alias="OPENAI_MODEL")
     ai_keyword_expansion_enabled: bool = Field(default=True, validation_alias="AI_KEYWORD_EXPANSION_ENABLED")
+    database_path: str = Field(default="data/sourcehunter.sqlite3", validation_alias="SOURCEHUNTER_DB_PATH")
 
     model_config = SettingsConfigDict(
         env_file=(".env.local", "../.env.local"),
