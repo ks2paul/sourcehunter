@@ -21,6 +21,18 @@ SourceHunter must return reliable supplier data or fewer results. It must never 
 
 ## Local Development
 
+### One-command local trial
+
+```bash
+./scripts/start-local.sh
+```
+
+Open:
+
+```text
+http://127.0.0.1:3000
+```
+
 ### Backend
 
 ```bash
@@ -128,6 +140,7 @@ npm run build
 ## Current Build
 
 The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, retrieves 1688 listings through Elimapi when configured, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
+Supplier and raw listing results are cached in SQLite after the first retrieval for each search job. The UI supports CSV export and bilingual RFQ draft generation.
 
 Known limitations:
 

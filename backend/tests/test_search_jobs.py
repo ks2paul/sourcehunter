@@ -48,6 +48,34 @@ def test_search_job_repository_returns_none_for_missing_job():
     assert repository.get("job_missing") is None
 
 
+def test_search_job_repository_persists_supplier_results(tmp_path):
+    repository = SearchJobRepository(db_path=tmp_path / "sourcehunter.sqlite3")
+    payload = {
+        "status": "completed",
+        "suppliers": [{"supplier_id": "sup_1", "company_name": "Supplier A"}],
+        "failures": [],
+    }
+
+    repository.save_supplier_result("job_1", payload)
+    second_repository = SearchJobRepository(db_path=tmp_path / "sourcehunter.sqlite3")
+
+    assert second_repository.get_supplier_result("job_1") == payload
+
+
+def test_search_job_repository_persists_raw_listing_results(tmp_path):
+    repository = SearchJobRepository(db_path=tmp_path / "sourcehunter.sqlite3")
+    payload = {
+        "status": "completed",
+        "listings": [{"platform": "1688", "raw_product_name": "Fan"}],
+        "failures": [],
+    }
+
+    repository.save_raw_listing_result("job_1", payload)
+    second_repository = SearchJobRepository(db_path=tmp_path / "sourcehunter.sqlite3")
+
+    assert second_repository.get_raw_listing_result("job_1") == payload
+
+
 def test_create_search_job_api_returns_job():
     client = TestClient(app)
 
@@ -217,3 +245,42 @@ def test_get_unique_suppliers_honors_factory_only_without_guessing(monkeypatch):
     assert response.status_code == 200
     assert response.json()["status"] == "no_results"
     assert response.json()["suppliers"] == []
+
+
+def test_get_unique_suppliers_uses_cached_result(monkeypatch):
+    from app.routes import search_jobs
+
+    class FailingWorker:
+        async def search_all(self, keyword: str):
+            raise AssertionError("worker should not be called when supplier result is cached")
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FailingWorker())
+    client = TestClient(app)
+    created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+    search_jobs.repository.save_supplier_result(
+        created["job_id"],
+        {
+            "status": "completed",
+            "suppliers": [
+                {
+                    "supplier_id": "sup_cached",
+                    "company_name": "Cached Supplier",
+                    "supplier_type": "Supplier Type Unknown",
+                    "supplier_url": None,
+                    "platforms": ["1688"],
+                    "listing_count": 1,
+                    "supplier_score": 50,
+                    "score_breakdown": {},
+                    "recommendation_reasons": ["Cached result."],
+                    "recommended_action": "Verify supplier details first",
+                    "products": [],
+                }
+            ],
+            "failures": [],
+        },
+    )
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
+
+    assert response.status_code == 200
+    assert response.json()["suppliers"][0]["supplier_id"] == "sup_cached"

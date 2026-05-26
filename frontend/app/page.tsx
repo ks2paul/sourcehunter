@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
+import { downloadCsv, suppliersToCsv } from "@/lib/exportSuppliers";
 import { buildRfqDraft } from "@/lib/rfq";
 import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
 import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse } from "@/lib/types";
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [isFetchingListings, setIsFetchingListings] = useState(false);
   const [supplierSortMode, setSupplierSortMode] = useState<SupplierSortMode>("highest_score");
   const [rfqDraft, setRfqDraft] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sortedSuppliers = useMemo(
     () => (suppliers ? sortSuppliers(suppliers.suppliers, supplierSortMode) : []),
@@ -90,6 +92,22 @@ export default function HomePage() {
     } finally {
       setIsFetchingListings(false);
     }
+  }
+
+  async function handleCopyRfq() {
+    if (!rfqDraft) {
+      return;
+    }
+    await navigator.clipboard.writeText(rfqDraft);
+    setCopyMessage("RFQ copied");
+  }
+
+  function handleExportSuppliers() {
+    if (!suppliers) {
+      return;
+    }
+    const filename = `${job?.product_keyword ?? "sourcehunter"}-${suppliers.job_id}-suppliers.csv`;
+    downloadCsv(filename, suppliersToCsv(sortedSuppliers));
   }
 
   return (
@@ -229,21 +247,30 @@ export default function HomePage() {
                   ) : null}
                   {suppliers.suppliers.length > 0 ? (
                     <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {supplierSortModes.map((mode) => (
-                          <button
-                            type="button"
-                            key={mode.value}
-                            onClick={() => setSupplierSortMode(mode.value)}
-                            className={`rounded border px-3 py-1 text-sm ${
-                              supplierSortMode === mode.value
-                                ? "border-slate-950 bg-slate-950 text-white"
-                                : "border-slate-300 bg-white text-slate-700"
-                            }`}
-                          >
-                            {mode.label}
-                          </button>
-                        ))}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {supplierSortModes.map((mode) => (
+                            <button
+                              type="button"
+                              key={mode.value}
+                              onClick={() => setSupplierSortMode(mode.value)}
+                              className={`rounded border px-3 py-1 text-sm ${
+                                supplierSortMode === mode.value
+                                  ? "border-slate-950 bg-slate-950 text-white"
+                                  : "border-slate-300 bg-white text-slate-700"
+                              }`}
+                            >
+                              {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleExportSuppliers}
+                          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-900"
+                        >
+                          Export CSV
+                        </button>
                       </div>
                       {sortedSuppliers.map((supplier) => {
                         const leadProduct = supplier.products[0];
@@ -313,7 +340,19 @@ export default function HomePage() {
 
               {rfqDraft ? (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-slate-800">RFQ draft</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-800">RFQ draft</h3>
+                    <div className="flex items-center gap-3">
+                      {copyMessage ? <span className="text-sm text-emerald-700">{copyMessage}</span> : null}
+                      <button
+                        type="button"
+                        onClick={handleCopyRfq}
+                        className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-900"
+                      >
+                        Copy RFQ
+                      </button>
+                    </div>
+                  </div>
                   <textarea
                     readOnly
                     value={rfqDraft}

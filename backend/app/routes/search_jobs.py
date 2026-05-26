@@ -33,12 +33,20 @@ async def get_raw_listings(job_id: str) -> RawListingsResponse:
     job = repository.get(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Search job not found")
+    cached_result = repository.get_raw_listing_result(job.job_id)
+    if cached_result is not None:
+        return RawListingsResponse(job_id=job.job_id, **cached_result)
+
     scrape_result = await create_scraping_worker().search_all(job.product_keyword)
+    payload = {
+        "status": "completed" if scrape_result.listings else "no_results",
+        "listings": [listing.model_dump(mode="json") for listing in scrape_result.listings],
+        "failures": [failure.model_dump(mode="json") for failure in scrape_result.failures],
+    }
+    repository.save_raw_listing_result(job.job_id, payload)
     return RawListingsResponse(
         job_id=job.job_id,
-        status="completed" if scrape_result.listings else "no_results",
-        listings=[listing.model_dump(mode="json") for listing in scrape_result.listings],
-        failures=[failure.model_dump(mode="json") for failure in scrape_result.failures],
+        **payload,
     )
 
 
@@ -47,6 +55,9 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     job = repository.get(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Search job not found")
+    cached_result = repository.get_supplier_result(job.job_id)
+    if cached_result is not None:
+        return SuppliersResponse(job_id=job.job_id, **cached_result)
 
     scrape_result = await create_scraping_worker().search_all(job.product_keyword)
     suppliers = deduplicate_suppliers(
@@ -56,9 +67,13 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         moq_preference=job.moq_preference,
         supplier_preference=job.supplier_preference,
     )
+    payload = {
+        "status": "completed" if suppliers else "no_results",
+        "suppliers": [supplier.model_dump(mode="json") for supplier in suppliers],
+        "failures": [failure.model_dump(mode="json") for failure in scrape_result.failures],
+    }
+    repository.save_supplier_result(job.job_id, payload)
     return SuppliersResponse(
         job_id=job.job_id,
-        status="completed" if suppliers else "no_results",
-        suppliers=[supplier.model_dump(mode="json") for supplier in suppliers],
-        failures=[failure.model_dump(mode="json") for failure in scrape_result.failures],
+        **payload,
     )

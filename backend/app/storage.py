@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 from uuid import uuid4
@@ -41,6 +42,18 @@ class SearchJobRepository:
             return None
         return SearchJob.model_validate_json(row[0])
 
+    def save_supplier_result(self, job_id: str, payload: dict) -> None:
+        self._save_result(job_id=job_id, result_type="suppliers", payload=payload)
+
+    def get_supplier_result(self, job_id: str) -> dict | None:
+        return self._get_result(job_id=job_id, result_type="suppliers")
+
+    def save_raw_listing_result(self, job_id: str, payload: dict) -> None:
+        self._save_result(job_id=job_id, result_type="raw_listings", payload=payload)
+
+    def get_raw_listing_result(self, job_id: str) -> dict | None:
+        return self._get_result(job_id=job_id, result_type="raw_listings")
+
     def _initialize(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
@@ -51,6 +64,17 @@ class SearchJobRepository:
                     payload TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS search_results (
+                    job_id TEXT NOT NULL,
+                    result_type TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (job_id, result_type)
                 )
                 """
             )
@@ -72,3 +96,23 @@ class SearchJobRepository:
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._db_path)
+
+    def _save_result(self, job_id: str, result_type: str, payload: dict) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT OR REPLACE INTO search_results (job_id, result_type, payload, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (job_id, result_type, json.dumps(payload), utc_now().isoformat()),
+            )
+
+    def _get_result(self, job_id: str, result_type: str) -> dict | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT payload FROM search_results WHERE job_id = ? AND result_type = ?",
+                (job_id, result_type),
+            ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row[0])
