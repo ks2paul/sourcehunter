@@ -54,3 +54,40 @@ async def test_extract_listings_from_search_page_uses_only_visible_source_data()
     assert listing.raw_company_name == "Shenzhen Realmark Industrial Co., Ltd."
     assert listing.raw_price == "US$3.50-4.50"
     assert listing.raw_moq == "1,000 Pieces (MOQ)"
+
+
+@pytest.mark.anyio
+async def test_extract_listings_from_search_page_handles_product_links_without_legacy_card_class():
+    html = """
+    <main>
+      <article class="product-item">
+        <a href="https://supplier-b.en.made-in-china.com/product/xyz.html">
+          <img alt="Portable Rechargeable Handheld Fan" />
+        </a>
+        <span>US$2.20-3.00</span>
+        <span>100 Pieces (MOQ)</span>
+      </article>
+    </main>
+    """
+
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.set_content(html)
+
+        listings = await MadeInChinaAdapter().extract_listings_from_page(
+            page=page,
+            source_url="https://www.made-in-china.com/products-search/hot-china-products/Handheld_Fan.html",
+            limit=5,
+        )
+
+        await browser.close()
+
+    assert len(listings) == 1
+    listing = listings[0]
+    assert listing.product_url == "https://supplier-b.en.made-in-china.com/product/xyz.html"
+    assert listing.supplier_url == "https://supplier-b.en.made-in-china.com/"
+    assert listing.raw_product_name == "Portable Rechargeable Handheld Fan"
+    assert listing.raw_company_name is None
+    assert listing.raw_price == "US$2.20-3.00"
+    assert listing.raw_moq == "100 Pieces (MOQ)"
