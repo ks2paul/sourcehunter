@@ -20,6 +20,8 @@ SourceHunter must return reliable supplier data or fewer results. It must never 
 - English Roadmap: `docs/IMPLEMENTATION_ROADMAP.en.md`
 - Chinese Deployment Prep: `docs/DEPLOYMENT_PREP.zh.md`
 - English Deployment Prep: `docs/DEPLOYMENT_PREP.en.md`
+- Chinese Deployment Runbook: `docs/DEPLOYMENT_RUNBOOK.zh.md`
+- English Deployment Runbook: `docs/DEPLOYMENT_RUNBOOK.en.md`
 
 ## Local Development
 
