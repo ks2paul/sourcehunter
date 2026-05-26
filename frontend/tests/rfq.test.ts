@@ -12,7 +12,9 @@ const supplier: UniqueSupplier = {
   listing_count: 1,
   supplier_score: 60,
   score_breakdown: {},
+  recommendation_tier: "B",
   recommendation_reasons: [],
+  risk_flags: [],
   recommended_action: "Request quotation immediately",
   products: [
     {

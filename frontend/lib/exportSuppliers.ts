@@ -9,6 +9,7 @@ export function suppliersToCsv(suppliers: UniqueSupplier[]): string {
       supplier.supplier_type,
       supplier.platforms.join(" / "),
       String(supplier.supplier_score),
+      supplier.recommendation_tier ?? "",
       supplier.recommended_action,
       leadProduct?.supplier_id ?? "",
       leadProduct?.product_name ?? "",
@@ -17,6 +18,7 @@ export function suppliersToCsv(suppliers: UniqueSupplier[]): string {
       leadProduct?.product_url ?? "",
       supplier.supplier_url ?? "",
       supplier.recommendation_reasons.join(" | "),
+      (supplier.risk_flags ?? []).join(" | "),
     ];
   });
 
@@ -27,6 +29,7 @@ export function suppliersToCsv(suppliers: UniqueSupplier[]): string {
       "Supplier Type",
       "Platforms",
       "Score",
+      "Tier",
       "Recommended Action",
       "Platform Supplier ID",
       "Lead Product",
@@ -35,6 +38,7 @@ export function suppliersToCsv(suppliers: UniqueSupplier[]): string {
       "Product URL",
       "Supplier URL",
       "Recommendation Reasons",
+      "Risk Flags",
     ],
     ...rows,
   ]

@@ -219,3 +219,92 @@ def test_deduplicate_suppliers_factory_only_excludes_verified_non_factories():
     assert len(suppliers) == 1
     assert suppliers[0].supplier_type == "Verified Factory"
     assert suppliers[0].products[0].supplier_id == "factory-shop"
+
+
+def test_deduplicate_suppliers_flags_product_mismatch():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://supplier.example/product.html",
+            supplier_url="https://supplier.en.made-in-china.com/",
+            raw_product_name="Factory OEM Hand Held Folding Fans Custom Printed Bamboo Large Hand Fan",
+            raw_company_name="Bamboo Gift Supplier",
+            raw_price="US$0.80",
+            raw_moq="100 Pieces (MOQ)",
+        )
+    ]
+
+    supplier = deduplicate_suppliers(listings, product_keyword="handheld fan")[0]
+
+    assert "Product title may not match sourcing intent." in supplier.risk_flags
+    assert supplier.recommendation_tier == "D"
+    assert supplier.recommended_action == "Do not shortlist until product match is verified"
+
+
+def test_deduplicate_suppliers_flags_abnormally_low_price_against_market_median():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="normal-1",
+            raw_product_name="Rechargeable Handheld Fan",
+            raw_supplier_type="factory",
+            raw_price="¥10.00",
+            raw_moq="50 pieces",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/2.html",
+            raw_supplier_id="normal-2",
+            raw_product_name="Rechargeable Handheld Fan",
+            raw_supplier_type="factory",
+            raw_price="¥11.00",
+            raw_moq="50 pieces",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/3.html",
+            raw_supplier_id="suspicious-low",
+            raw_product_name="Rechargeable Handheld Fan",
+            raw_supplier_type="factory",
+            raw_price="¥2.00",
+            raw_moq="50 pieces",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="handheld fan")
+    suspicious = next(supplier for supplier in suppliers if supplier.products[0].supplier_id == "suspicious-low")
+
+    assert "Price is far below market median; verify quotation." in suspicious.risk_flags
+    assert suspicious.recommendation_tier != "A"
+
+
+def test_deduplicate_suppliers_assigns_a_tier_to_strong_verified_factory():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/100.html",
+            raw_supplier_id="factory-100",
+            raw_product_name="Portable Rechargeable Handheld Fan",
+            raw_supplier_type="factory",
+            raw_price="¥9.80",
+            raw_moq="20 pieces",
+        )
+    ]
+
+    supplier = deduplicate_suppliers(
+        listings,
+        product_keyword="handheld fan",
+        target_price=12.0,
+        moq_preference=50,
+        supplier_preference="Factory Only",
+    )[0]
+
+    assert supplier.recommendation_tier == "A"
+    assert supplier.risk_flags == []
+    assert supplier.recommended_action == "Request quotation immediately"

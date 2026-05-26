@@ -1,4 +1,5 @@
 from hashlib import sha256
+from statistics import median
 import re
 from urllib.parse import urlparse
 
@@ -26,7 +27,9 @@ class UniqueSupplier(BaseModel):
     listing_count: int
     supplier_score: int = Field(ge=0, le=100)
     score_breakdown: dict[str, int]
+    recommendation_tier: str
     recommendation_reasons: list[str]
+    risk_flags: list[str]
     recommended_action: str
     products: list[SupplierProduct]
 
@@ -47,6 +50,7 @@ def deduplicate_suppliers(
             continue
         grouped.setdefault(identity, []).append(listing)
 
+    market_median_price = _market_median_price(listings)
     suppliers = [
         _build_supplier(
             identity=identity,
@@ -54,6 +58,7 @@ def deduplicate_suppliers(
             product_keyword=product_keyword,
             target_price=target_price,
             moq_preference=moq_preference,
+            market_median_price=market_median_price,
         )
         for identity, group in grouped.items()
     ]
@@ -89,6 +94,7 @@ def _build_supplier(
     product_keyword: str | None,
     target_price: float | None,
     moq_preference: int | None,
+    market_median_price: float | None,
 ) -> UniqueSupplier:
     company_name = next((listing.raw_company_name for listing in listings if listing.raw_company_name), None)
     supplier_url = next((listing.supplier_url for listing in listings if listing.supplier_url), None)
@@ -100,27 +106,43 @@ def _build_supplier(
         product_keyword=product_keyword,
         target_price=target_price,
         moq_preference=moq_preference,
+        market_median_price=market_median_price,
     )
     supplier_score = min(100, sum(score_breakdown.values()))
+    supplier_type = _supplier_type(listings)
+    risk_flags = _risk_flags(
+        listings=listings,
+        score_breakdown=score_breakdown,
+        product_keyword=product_keyword,
+        target_price=target_price,
+        market_median_price=market_median_price,
+    )
+    recommendation_tier = _recommendation_tier(
+        supplier_score=supplier_score,
+        risk_flags=risk_flags,
+    )
     reasons = _recommendation_reasons(
         listings=listings,
         score_breakdown=score_breakdown,
         product_keyword=product_keyword,
         target_price=target_price,
         moq_preference=moq_preference,
+        market_median_price=market_median_price,
     )
 
     return UniqueSupplier(
         supplier_id=_supplier_id(identity),
         company_name=company_name or "Company Name Unavailable",
-        supplier_type=_supplier_type(listings),
+        supplier_type=supplier_type,
         supplier_url=supplier_url,
         platforms=platforms,
         listing_count=len(listings),
         supplier_score=supplier_score,
         score_breakdown=score_breakdown,
+        recommendation_tier=recommendation_tier,
         recommendation_reasons=reasons,
-        recommended_action=_recommended_action(score=supplier_score, reasons=reasons),
+        risk_flags=risk_flags,
+        recommended_action=_recommended_action(tier=recommendation_tier, reasons=reasons, risk_flags=risk_flags),
         products=[
             SupplierProduct(
                 product_name=listing.raw_product_name,
@@ -163,11 +185,12 @@ def _score_supplier(
     product_keyword: str | None,
     target_price: float | None,
     moq_preference: int | None,
+    market_median_price: float | None,
 ) -> dict[str, int]:
     return {
         "category_specialization": min(15, len(listings) * 5),
         "factory_likelihood": _factory_likelihood_score(company_name, listings),
-        "price_competitiveness": _price_score(listings, target_price),
+        "price_competitiveness": _price_score(listings, target_price, market_median_price),
         "moq_suitability": _moq_score(listings, moq_preference),
         "export_readiness": _export_readiness_score(listings, supplier_url),
         "business_maturity": _business_maturity_score(listings),
@@ -176,22 +199,31 @@ def _score_supplier(
 
 
 def _product_match_score(listings: list[RawListing], product_keyword: str | None) -> int:
-    tokens = [token for token in re.split(r"[^a-z0-9]+", (product_keyword or "").lower()) if token]
+    keyword = (product_keyword or "").lower()
+    normalized_keyword = re.sub(r"\s+", "", keyword)
+    tokens = [token for token in re.split(r"[^a-z0-9]+", keyword) if token]
     if not tokens:
+        if not normalized_keyword:
+            return 10
+        for listing in listings:
+            product_name = re.sub(r"\s+", "", (listing.raw_product_name or "").lower())
+            if normalized_keyword and normalized_keyword in product_name:
+                return 25
         return 10
 
     best_ratio = 0.0
     for listing in listings:
         product_name = (listing.raw_product_name or "").lower()
+        compact_product_name = re.sub(r"\s+", "", product_name)
         if not product_name:
             continue
-        matched = sum(1 for token in tokens if token in product_name)
+        matched = sum(1 for token in tokens if token in product_name or token in compact_product_name)
         best_ratio = max(best_ratio, matched / len(tokens))
 
     return round(best_ratio * 25)
 
 
-def _price_score(listings: list[RawListing], target_price: float | None) -> int:
+def _price_score(listings: list[RawListing], target_price: float | None, market_median_price: float | None = None) -> int:
     prices = [_parse_lowest_number(listing.raw_price) for listing in listings]
     known_prices = [price for price in prices if price is not None]
     if not known_prices:
@@ -206,6 +238,17 @@ def _price_score(listings: list[RawListing], target_price: float | None) -> int:
         if lowest_price <= target_price * 1.5:
             return 8
         return 3
+
+    if market_median_price:
+        if lowest_price < market_median_price * 0.5:
+            return 8
+        if lowest_price <= market_median_price:
+            return 18
+        if lowest_price <= market_median_price * 1.25:
+            return 14
+        if lowest_price <= market_median_price * 1.5:
+            return 10
+        return 5
 
     if lowest_price <= 1:
         return 20
@@ -299,6 +342,7 @@ def _recommendation_reasons(
     product_keyword: str | None,
     target_price: float | None,
     moq_preference: int | None,
+    market_median_price: float | None,
 ) -> list[str]:
     reasons: list[str] = []
     if product_keyword and score_breakdown["product_match_quality"] >= 20:
@@ -313,7 +357,7 @@ def _recommendation_reasons(
         reasons.append("Supplier has a platform supplier page suitable for export inquiry.")
     if score_breakdown["factory_likelihood"] >= 5:
         reasons.append("Company wording suggests possible manufacturing capability; verify before relying on it.")
-    if _price_score(listings, target_price) == 0:
+    if _price_score(listings, target_price, market_median_price) == 0:
         reasons.append("Price unavailable; ask supplier for current quotation.")
     if _moq_score(listings, moq_preference) == 0:
         reasons.append("MOQ unavailable; confirm MOQ before shortlisting.")
@@ -322,14 +366,86 @@ def _recommendation_reasons(
     return reasons
 
 
-def _recommended_action(score: int, reasons: list[str]) -> str:
+def _risk_flags(
+    listings: list[RawListing],
+    score_breakdown: dict[str, int],
+    product_keyword: str | None,
+    target_price: float | None,
+    market_median_price: float | None,
+) -> list[str]:
+    flags: list[str] = []
+    if product_keyword and (
+        score_breakdown["product_match_quality"] < 20 or _looks_like_manual_folding_fan(product_keyword, listings)
+    ):
+        flags.append("Product title may not match sourcing intent.")
+
+    known_prices = [_parse_lowest_number(listing.raw_price) for listing in listings]
+    lowest_price = min((price for price in known_prices if price is not None), default=None)
+    if lowest_price is None:
+        flags.append("Price unavailable; verify quotation before shortlisting.")
+    elif (
+        market_median_price
+        and lowest_price < market_median_price * 0.5
+        and (target_price is None or lowest_price < target_price * 0.5)
+    ):
+        flags.append("Price is far below market median; verify quotation.")
+
+    known_moqs = [_parse_lowest_number(listing.raw_moq) for listing in listings]
+    lowest_moq = min((moq for moq in known_moqs if moq is not None), default=None)
+    if lowest_moq is None:
+        flags.append("MOQ unavailable; confirm minimum order quantity.")
+    elif lowest_moq > 1000:
+        flags.append("MOQ is high for trial order.")
+
+    return flags
+
+
+def _looks_like_manual_folding_fan(product_keyword: str, listings: list[RawListing]) -> bool:
+    keyword = product_keyword.lower()
+    if "fan" not in keyword or not any(term in keyword for term in ("handheld", "portable", "mini", "rechargeable")):
+        return False
+
+    manual_terms = ("bamboo", "folding fan", "paper fan", "hand fan", "wedding fan", "custom printed")
+    electric_terms = ("electric", "usb", "rechargeable", "battery", "cooling", "portable", "mini")
+    for listing in listings:
+        product_name = (listing.raw_product_name or "").lower()
+        if any(term in product_name for term in manual_terms) and not any(term in product_name for term in electric_terms):
+            return True
+    return False
+
+
+def _recommendation_tier(supplier_score: int, risk_flags: list[str]) -> str:
+    if "Product title may not match sourcing intent." in risk_flags:
+        return "D"
+    if supplier_score >= 70 and not risk_flags:
+        return "A"
+    if supplier_score >= 60:
+        return "B"
+    if supplier_score >= 40:
+        return "C"
+    return "D"
+
+
+def _recommended_action(tier: str, reasons: list[str], risk_flags: list[str]) -> str:
+    if "Product title may not match sourcing intent." in risk_flags:
+        return "Do not shortlist until product match is verified"
+    if "Price is far below market median; verify quotation." in risk_flags:
+        return "Verify price authenticity before contacting"
     if any(reason.startswith("MOQ unavailable") for reason in reasons) or any(reason.startswith("Price unavailable") for reason in reasons):
         return "Ask for quotation and MOQ"
-    if score >= 70:
+    if tier == "A":
         return "Request quotation immediately"
     if any("MOQ appears" in reason for reason in reasons):
         return "Request samples"
     return "Verify supplier details first"
+
+
+def _market_median_price(listings: list[RawListing]) -> float | None:
+    known_prices = [_parse_lowest_number(listing.raw_price) for listing in listings]
+    prices = [price for price in known_prices if price is not None]
+    if not prices:
+        return None
+    return float(median(prices))
 
 
 def _parse_lowest_number(value: str | None) -> float | None:

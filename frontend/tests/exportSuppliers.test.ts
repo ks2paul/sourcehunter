@@ -15,7 +15,9 @@ describe("suppliersToCsv", () => {
         listing_count: 1,
         supplier_score: 72,
         score_breakdown: {},
+        recommendation_tier: "A",
         recommendation_reasons: ["Strong match.", "Low MOQ."],
+        risk_flags: ["Verify price."],
         recommended_action: "Request quotation immediately",
         products: [
           {
@@ -36,6 +38,8 @@ describe("suppliersToCsv", () => {
     expect(csv).toContain('"Supplier ""A"""');
     expect(csv).toContain('"Verified Factory"');
     expect(csv).toContain('"shop-1"');
+    expect(csv).toContain('"A"');
     expect(csv).toContain('"Strong match. | Low MOQ."');
+    expect(csv).toContain('"Verify price."');
   });
 });

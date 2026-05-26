@@ -71,7 +71,9 @@ export type UniqueSupplier = {
   listing_count: number;
   supplier_score: number;
   score_breakdown: Record<string, number>;
+  recommendation_tier?: string;
   recommendation_reasons: string[];
+  risk_flags?: string[];
   recommended_action: string;
   products: Array<{
     product_name: string | null;

@@ -274,6 +274,8 @@ export default function HomePage() {
                       </div>
                       {sortedSuppliers.map((supplier) => {
                         const leadProduct = supplier.products[0];
+                        const riskFlags = supplier.risk_flags ?? [];
+                        const tier = supplier.recommendation_tier ?? "Unrated";
                         return (
                           <article key={supplier.supplier_id} className="rounded border border-slate-200 p-3">
                             <div className="text-xs uppercase tracking-wide text-slate-500">
@@ -285,8 +287,13 @@ export default function HomePage() {
                                 <h4 className="text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
                                 <p className="mt-1 text-xs text-slate-500">{supplier.supplier_type}</p>
                               </div>
-                              <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
-                                Score {supplier.supplier_score}
+                              <div className="flex flex-wrap gap-2">
+                                <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+                                  Tier {tier}
+                                </div>
+                                <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+                                  Score {supplier.supplier_score}
+                                </div>
                               </div>
                             </div>
                             <p className="mt-2 text-sm text-slate-600">
@@ -304,6 +311,13 @@ export default function HomePage() {
                             <p className="mt-2 text-sm font-medium text-slate-800">
                               Action: {supplier.recommended_action}
                             </p>
+                            {riskFlags.length > 0 ? (
+                              <ul className="mt-2 space-y-1 text-sm text-amber-800">
+                                {riskFlags.map((flag) => (
+                                  <li key={flag}>Risk: {flag}</li>
+                                ))}
+                              </ul>
+                            ) : null}
                             <ul className="mt-2 space-y-1 text-sm text-slate-600">
                               {supplier.recommendation_reasons.slice(0, 3).map((reason) => (
                                 <li key={reason}>{reason}</li>
