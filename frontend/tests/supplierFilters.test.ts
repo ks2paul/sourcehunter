@@ -34,15 +34,15 @@ describe("sortSuppliers", () => {
     const suppliers = [
       supplier({
         supplier_id: "unknown",
-        products: [{ product_name: null, product_url: null, price: null, moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
+        products: [{ product_name: null, product_url: null, supplier_id: null, price: null, moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
       }),
       supplier({
         supplier_id: "expensive",
-        products: [{ product_name: null, product_url: null, price: "US$9.00", moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
+        products: [{ product_name: null, product_url: null, supplier_id: null, price: "US$9.00", moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
       }),
       supplier({
         supplier_id: "cheap",
-        products: [{ product_name: null, product_url: null, price: "US$2.20-2.80", moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
+        products: [{ product_name: null, product_url: null, supplier_id: null, price: "US$2.20-2.80", moq: null, platform: "Made-in-China", source_url: "https://example.test" }],
       }),
     ];
 
@@ -57,11 +57,11 @@ describe("sortSuppliers", () => {
     const suppliers = [
       supplier({
         supplier_id: "high_moq",
-        products: [{ product_name: null, product_url: null, price: null, moq: "1,000 Pieces (MOQ)", platform: "Made-in-China", source_url: "https://example.test" }],
+        products: [{ product_name: null, product_url: null, supplier_id: null, price: null, moq: "1,000 Pieces (MOQ)", platform: "Made-in-China", source_url: "https://example.test" }],
       }),
       supplier({
         supplier_id: "low_moq",
-        products: [{ product_name: null, product_url: null, price: null, moq: "20 Pieces (MOQ)", platform: "Made-in-China", source_url: "https://example.test" }],
+        products: [{ product_name: null, product_url: null, supplier_id: null, price: null, moq: "20 Pieces (MOQ)", platform: "Made-in-China", source_url: "https://example.test" }],
       }),
     ];
 

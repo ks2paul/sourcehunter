@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
+import { buildRfqDraft } from "@/lib/rfq";
 import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
 import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse } from "@/lib/types";
 
@@ -25,6 +26,7 @@ export default function HomePage() {
   const [isFetchingSuppliers, setIsFetchingSuppliers] = useState(false);
   const [isFetchingListings, setIsFetchingListings] = useState(false);
   const [supplierSortMode, setSupplierSortMode] = useState<SupplierSortMode>("highest_score");
+  const [rfqDraft, setRfqDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sortedSuppliers = useMemo(
     () => (suppliers ? sortSuppliers(suppliers.suppliers, supplierSortMode) : []),
@@ -38,6 +40,7 @@ export default function HomePage() {
     setJob(null);
     setSuppliers(null);
     setRawListings(null);
+    setRfqDraft(null);
 
     try {
       const createdJob = await createSearchJob({
@@ -62,6 +65,7 @@ export default function HomePage() {
     setIsFetchingSuppliers(true);
     setError(null);
     setSuppliers(null);
+    setRfqDraft(null);
 
     try {
       setSuppliers(await getUniqueSuppliers(job.job_id));
@@ -265,6 +269,11 @@ export default function HomePage() {
                               Price: {leadProduct?.price ?? "Price Unavailable"} · MOQ:{" "}
                               {leadProduct?.moq ?? "MOQ Unavailable"}
                             </p>
+                            {leadProduct?.supplier_id ? (
+                              <p className="mt-1 break-all text-xs text-slate-500">
+                                Supplier ID: {leadProduct.supplier_id}
+                              </p>
+                            ) : null}
                             <p className="mt-2 text-sm font-medium text-slate-800">
                               Action: {supplier.recommended_action}
                             </p>
@@ -274,6 +283,13 @@ export default function HomePage() {
                               ))}
                             </ul>
                             <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                              <button
+                                type="button"
+                                onClick={() => setRfqDraft(buildRfqDraft(supplier, job.product_keyword))}
+                                className="text-slate-900 underline"
+                              >
+                                RFQ draft
+                              </button>
                               {supplier.supplier_url ? (
                                 <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
                                   Supplier
@@ -292,6 +308,17 @@ export default function HomePage() {
                   ) : (
                     <p className="text-sm text-slate-500">No unique suppliers returned.</p>
                   )}
+                </div>
+              ) : null}
+
+              {rfqDraft ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-slate-800">RFQ draft</h3>
+                  <textarea
+                    readOnly
+                    value={rfqDraft}
+                    className="min-h-80 w-full rounded border border-slate-300 bg-slate-50 p-3 font-mono text-sm text-slate-800"
+                  />
                 </div>
               ) : null}
 

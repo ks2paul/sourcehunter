@@ -76,6 +76,7 @@ export type UniqueSupplier = {
   products: Array<{
     product_name: string | null;
     product_url: string | null;
+    supplier_id: string | null;
     price: string | null;
     moq: string | null;
     platform: string;

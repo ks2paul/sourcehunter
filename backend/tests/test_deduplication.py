@@ -32,6 +32,7 @@ def test_deduplicate_suppliers_groups_same_supplier_url():
     assert suppliers[0].company_name == "Shenzhen Realmark Industrial Co., Ltd."
     assert suppliers[0].supplier_url == "https://supplier-a.en.made-in-china.com/"
     assert suppliers[0].listing_count == 2
+    assert suppliers[0].products[0].supplier_id is None
     assert [product.product_name for product in suppliers[0].products] == ["Handheld Fan A", "Handheld Fan B"]
 
 
@@ -217,3 +218,4 @@ def test_deduplicate_suppliers_factory_only_excludes_verified_non_factories():
 
     assert len(suppliers) == 1
     assert suppliers[0].supplier_type == "Verified Factory"
+    assert suppliers[0].products[0].supplier_id == "factory-shop"

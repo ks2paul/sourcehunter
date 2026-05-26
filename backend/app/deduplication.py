@@ -10,6 +10,7 @@ from app.scraping.models import RawListing
 class SupplierProduct(BaseModel):
     product_name: str | None
     product_url: str | None
+    supplier_id: str | None
     price: str | None
     moq: str | None
     platform: str
@@ -124,6 +125,7 @@ def _build_supplier(
             SupplierProduct(
                 product_name=listing.raw_product_name,
                 product_url=listing.product_url,
+                supplier_id=listing.raw_supplier_id,
                 price=listing.raw_price,
                 moq=listing.raw_moq,
                 platform=listing.platform,
