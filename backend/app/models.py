@@ -65,6 +65,7 @@ class SuppliersResponse(BaseModel):
     job_id: str
     status: str
     suppliers: list[dict[str, Any]]
+    platform_supplier_groups: list[dict[str, Any]] = Field(default_factory=list)
     failures: list[dict[str, Any]]
 
 

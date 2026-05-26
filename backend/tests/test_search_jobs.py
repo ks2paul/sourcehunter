@@ -211,6 +211,55 @@ def test_get_unique_suppliers_deduplicates_raw_listings(monkeypatch):
     assert [product["product_name"] for product in supplier["products"]] == ["Handheld Fan A", "Handheld Fan B"]
 
 
+def test_get_unique_suppliers_returns_platform_specific_top_five(monkeypatch):
+    from app.scraping.models import RawListing, ScrapeResult
+    from app.routes import search_jobs
+
+    class FakeWorker:
+        async def search_all(self, keyword: str) -> ScrapeResult:
+            listings: list[RawListing] = []
+            for index in range(6):
+                listings.append(
+                    RawListing(
+                        platform="Made-in-China",
+                        source_url="https://www.made-in-china.com/search",
+                        product_url=f"https://mic-{index}.example/product.html",
+                        supplier_url=f"https://mic-{index}.en.made-in-china.com/",
+                        raw_product_name="Rechargeable Handheld Fan",
+                        raw_company_name=f"MIC Supplier {index}",
+                        raw_price="US$3.50",
+                        raw_moq="500 Pieces (MOQ)",
+                    )
+                )
+                listings.append(
+                    RawListing(
+                        platform="1688",
+                        source_url="https://openapi.elim.asia/v1/products/search",
+                        product_url=f"https://detail.1688.com/offer/{index}.html",
+                        raw_supplier_id=f"shop-{index}",
+                        raw_product_name="Rechargeable Handheld Fan",
+                        raw_supplier_type="factory",
+                        raw_price="¥9.80",
+                        raw_moq="20 pieces",
+                    )
+                )
+            return ScrapeResult(listings=listings, failures=[])
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
+    client = TestClient(app)
+    created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
+
+    assert response.status_code == 200
+    platform_groups = response.json()["platform_supplier_groups"]
+    assert [group["platform"] for group in platform_groups] == ["Made-in-China", "1688"]
+    assert len(platform_groups[0]["suppliers"]) == 5
+    assert len(platform_groups[1]["suppliers"]) == 5
+    assert all(supplier["platforms"] == ["Made-in-China"] for supplier in platform_groups[0]["suppliers"])
+    assert all(supplier["platforms"] == ["1688"] for supplier in platform_groups[1]["suppliers"])
+
+
 def test_get_unique_suppliers_honors_factory_only_without_guessing(monkeypatch):
     from app.scraping.models import RawListing, ScrapeResult
     from app.routes import search_jobs
@@ -276,6 +325,26 @@ def test_get_unique_suppliers_uses_cached_result(monkeypatch):
                     "products": [],
                 }
             ],
+            "platform_supplier_groups": [
+                {
+                    "platform": "1688",
+                    "suppliers": [
+                        {
+                            "supplier_id": "sup_cached",
+                            "company_name": "Cached Supplier",
+                            "supplier_type": "Supplier Type Unknown",
+                            "supplier_url": None,
+                            "platforms": ["1688"],
+                            "listing_count": 1,
+                            "supplier_score": 50,
+                            "score_breakdown": {},
+                            "recommendation_reasons": ["Cached result."],
+                            "recommended_action": "Verify supplier details first",
+                            "products": [],
+                        }
+                    ],
+                }
+            ],
             "failures": [],
         },
     )
@@ -284,3 +353,44 @@ def test_get_unique_suppliers_uses_cached_result(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["suppliers"][0]["supplier_id"] == "sup_cached"
+
+
+def test_get_unique_suppliers_refreshes_legacy_cache_without_platform_groups(monkeypatch):
+    from app.scraping.models import RawListing, ScrapeResult
+    from app.routes import search_jobs
+
+    class FakeWorker:
+        async def search_all(self, keyword: str) -> ScrapeResult:
+            return ScrapeResult(
+                listings=[
+                    RawListing(
+                        platform="1688",
+                        source_url="https://openapi.elim.asia/v1/products/search",
+                        product_url="https://detail.1688.com/offer/1.html",
+                        raw_supplier_id="shop-1",
+                        raw_product_name="Rechargeable Handheld Fan",
+                        raw_supplier_type="factory",
+                        raw_price="¥9.80",
+                        raw_moq="20 pieces",
+                    )
+                ],
+                failures=[],
+            )
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
+    client = TestClient(app)
+    created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+    search_jobs.repository.save_supplier_result(
+        created["job_id"],
+        {
+            "status": "completed",
+            "suppliers": [],
+            "failures": [],
+        },
+    )
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
+
+    assert response.status_code == 200
+    assert response.json()["platform_supplier_groups"][1]["platform"] == "1688"
+    assert len(response.json()["platform_supplier_groups"][1]["suppliers"]) == 1

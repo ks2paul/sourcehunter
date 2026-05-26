@@ -90,5 +90,9 @@ export type SuppliersResponse = {
   job_id: string;
   status: "completed" | "no_results";
   suppliers: UniqueSupplier[];
+  platform_supplier_groups?: Array<{
+    platform: string;
+    suppliers: UniqueSupplier[];
+  }>;
   failures: RawListingsResponse["failures"];
 };

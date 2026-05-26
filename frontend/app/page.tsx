@@ -6,7 +6,7 @@ import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
 import { downloadCsv, suppliersToCsv } from "@/lib/exportSuppliers";
 import { buildRfqDraft } from "@/lib/rfq";
 import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
-import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse } from "@/lib/types";
+import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse, UniqueSupplier } from "@/lib/types";
 
 const supplierPreferences: SupplierPreference[] = ["Factory Preferred", "Factory Only", "Any Supplier"];
 const supplierSortModes: Array<{ label: string; value: SupplierSortMode }> = [
@@ -32,6 +32,14 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const sortedSuppliers = useMemo(
     () => (suppliers ? sortSuppliers(suppliers.suppliers, supplierSortMode) : []),
+    [suppliers, supplierSortMode],
+  );
+  const sortedPlatformGroups = useMemo(
+    () =>
+      (suppliers?.platform_supplier_groups ?? []).map((group) => ({
+        ...group,
+        suppliers: sortSuppliers(group.suppliers, supplierSortMode),
+      })),
     [suppliers, supplierSortMode],
   );
 
@@ -107,7 +115,8 @@ export default function HomePage() {
       return;
     }
     const filename = `${job?.product_keyword ?? "sourcehunter"}-${suppliers.job_id}-suppliers.csv`;
-    downloadCsv(filename, suppliersToCsv(sortedSuppliers));
+    const platformSuppliers = sortedPlatformGroups.flatMap((group) => group.suppliers);
+    downloadCsv(filename, suppliersToCsv([...sortedSuppliers, ...platformSuppliers]));
   }
 
   return (
@@ -235,7 +244,7 @@ export default function HomePage() {
 
               {suppliers ? (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-800">Top 5 unique suppliers</h3>
+                  <h3 className="text-sm font-semibold text-slate-800">Supplier shortlists</h3>
                   {suppliers.failures.length > 0 ? (
                     <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                       {suppliers.failures.map((failure) => (
@@ -272,79 +281,21 @@ export default function HomePage() {
                           Export CSV
                         </button>
                       </div>
-                      {sortedSuppliers.map((supplier) => {
-                        const leadProduct = supplier.products[0];
-                        const riskFlags = supplier.risk_flags ?? [];
-                        const tier = supplier.recommendation_tier ?? "Unrated";
-                        return (
-                          <article key={supplier.supplier_id} className="rounded border border-slate-200 p-3">
-                            <div className="text-xs uppercase tracking-wide text-slate-500">
-                              {supplier.platforms.join(", ")} · {supplier.listing_count} listing
-                              {supplier.listing_count === 1 ? "" : "s"}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
-                                <p className="mt-1 text-xs text-slate-500">{supplier.supplier_type}</p>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
-                                  Tier {tier}
-                                </div>
-                                <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
-                                  Score {supplier.supplier_score}
-                                </div>
-                              </div>
-                            </div>
-                            <p className="mt-2 text-sm text-slate-600">
-                              Lead product: {leadProduct?.product_name ?? "Product Name Unavailable"}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-600">
-                              Price: {leadProduct?.price ?? "Price Unavailable"} · MOQ:{" "}
-                              {leadProduct?.moq ?? "MOQ Unavailable"}
-                            </p>
-                            {leadProduct?.supplier_id ? (
-                              <p className="mt-1 break-all text-xs text-slate-500">
-                                Supplier ID: {leadProduct.supplier_id}
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-sm font-medium text-slate-800">
-                              Action: {supplier.recommended_action}
-                            </p>
-                            {riskFlags.length > 0 ? (
-                              <ul className="mt-2 space-y-1 text-sm text-amber-800">
-                                {riskFlags.map((flag) => (
-                                  <li key={flag}>Risk: {flag}</li>
-                                ))}
-                              </ul>
-                            ) : null}
-                            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                              {supplier.recommendation_reasons.slice(0, 3).map((reason) => (
-                                <li key={reason}>{reason}</li>
-                              ))}
-                            </ul>
-                            <div className="mt-2 flex flex-wrap gap-3 text-sm">
-                              <button
-                                type="button"
-                                onClick={() => setRfqDraft(buildRfqDraft(supplier, job.product_keyword))}
-                                className="text-slate-900 underline"
-                              >
-                                RFQ draft
-                              </button>
-                              {supplier.supplier_url ? (
-                                <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
-                                  Supplier
-                                </a>
-                              ) : null}
-                              {leadProduct?.product_url ? (
-                                <a className="text-blue-700 underline" href={leadProduct.product_url} target="_blank">
-                                  Product
-                                </a>
-                              ) : null}
-                            </div>
-                          </article>
-                        );
-                      })}
+                      <SupplierGroup
+                        title="Overall Top 5"
+                        suppliers={sortedSuppliers}
+                        productKeyword={job.product_keyword}
+                        onBuildRfq={setRfqDraft}
+                      />
+                      {sortedPlatformGroups.map((group) => (
+                        <SupplierGroup
+                          key={group.platform}
+                          title={`${group.platform} Top 5`}
+                          suppliers={group.suppliers}
+                          productKeyword={job.product_keyword}
+                          onBuildRfq={setRfqDraft}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <p className="text-sm text-slate-500">No unique suppliers returned.</p>
@@ -430,6 +381,113 @@ export default function HomePage() {
         </section>
       </section>
     </main>
+  );
+}
+
+function SupplierGroup({
+  title,
+  suppliers,
+  productKeyword,
+  onBuildRfq,
+}: {
+  title: string;
+  suppliers: UniqueSupplier[];
+  productKeyword: string;
+  onBuildRfq: (draft: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+      {suppliers.length > 0 ? (
+        suppliers.map((supplier) => (
+          <SupplierCard
+            key={`${title}-${supplier.supplier_id}`}
+            supplier={supplier}
+            productKeyword={productKeyword}
+            onBuildRfq={onBuildRfq}
+          />
+        ))
+      ) : (
+        <p className="rounded border border-slate-200 p-3 text-sm text-slate-500">No suppliers returned for this group.</p>
+      )}
+    </div>
+  );
+}
+
+function SupplierCard({
+  supplier,
+  productKeyword,
+  onBuildRfq,
+}: {
+  supplier: UniqueSupplier;
+  productKeyword: string;
+  onBuildRfq: (draft: string) => void;
+}) {
+  const leadProduct = supplier.products[0];
+  const riskFlags = supplier.risk_flags ?? [];
+  const tier = supplier.recommendation_tier ?? "Unrated";
+
+  return (
+    <article className="rounded border border-slate-200 p-3">
+      <div className="text-xs uppercase tracking-wide text-slate-500">
+        {supplier.platforms.join(", ")} · {supplier.listing_count} listing{supplier.listing_count === 1 ? "" : "s"}
+      </div>
+      <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-950">{supplier.company_name}</h4>
+          <p className="mt-1 text-xs text-slate-500">{supplier.supplier_type}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+            Tier {tier}
+          </div>
+          <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+            Score {supplier.supplier_score}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-sm text-slate-600">
+        Lead product: {leadProduct?.product_name ?? "Product Name Unavailable"}
+      </p>
+      <p className="mt-1 text-sm text-slate-600">
+        Price: {leadProduct?.price ?? "Price Unavailable"} · MOQ: {leadProduct?.moq ?? "MOQ Unavailable"}
+      </p>
+      {leadProduct?.supplier_id ? (
+        <p className="mt-1 break-all text-xs text-slate-500">Supplier ID: {leadProduct.supplier_id}</p>
+      ) : null}
+      <p className="mt-2 text-sm font-medium text-slate-800">Action: {supplier.recommended_action}</p>
+      {riskFlags.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-sm text-amber-800">
+          {riskFlags.map((flag) => (
+            <li key={flag}>Risk: {flag}</li>
+          ))}
+        </ul>
+      ) : null}
+      <ul className="mt-2 space-y-1 text-sm text-slate-600">
+        {supplier.recommendation_reasons.slice(0, 3).map((reason) => (
+          <li key={reason}>{reason}</li>
+        ))}
+      </ul>
+      <div className="mt-2 flex flex-wrap gap-3 text-sm">
+        <button
+          type="button"
+          onClick={() => onBuildRfq(buildRfqDraft(supplier, productKeyword))}
+          className="text-slate-900 underline"
+        >
+          RFQ draft
+        </button>
+        {supplier.supplier_url ? (
+          <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
+            Supplier
+          </a>
+        ) : null}
+        {leadProduct?.product_url ? (
+          <a className="text-blue-700 underline" href={leadProduct.product_url} target="_blank">
+            Product
+          </a>
+        ) : null}
+      </div>
+    </article>
   );
 }
 

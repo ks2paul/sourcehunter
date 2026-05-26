@@ -56,7 +56,7 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Search job not found")
     cached_result = repository.get_supplier_result(job.job_id)
-    if cached_result is not None:
+    if cached_result is not None and "platform_supplier_groups" in cached_result:
         return SuppliersResponse(job_id=job.job_id, **cached_result)
 
     scrape_result = await create_scraping_worker().search_all(job.product_keyword)
@@ -67,9 +67,17 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         moq_preference=job.moq_preference,
         supplier_preference=job.supplier_preference,
     )
+    platform_supplier_groups = _platform_supplier_groups(
+        listings=scrape_result.listings,
+        product_keyword=job.product_keyword,
+        target_price=job.target_price,
+        moq_preference=job.moq_preference,
+        supplier_preference=job.supplier_preference,
+    )
     payload = {
         "status": "completed" if suppliers else "no_results",
         "suppliers": [supplier.model_dump(mode="json") for supplier in suppliers],
+        "platform_supplier_groups": platform_supplier_groups,
         "failures": [failure.model_dump(mode="json") for failure in scrape_result.failures],
     }
     repository.save_supplier_result(job.job_id, payload)
@@ -77,3 +85,30 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         job_id=job.job_id,
         **payload,
     )
+
+
+def _platform_supplier_groups(
+    listings,
+    product_keyword: str,
+    target_price: float | None,
+    moq_preference: int | None,
+    supplier_preference: str | None,
+) -> list[dict]:
+    groups = []
+    for platform in ("Made-in-China", "1688"):
+        platform_listings = [listing for listing in listings if listing.platform == platform]
+        suppliers = deduplicate_suppliers(
+            platform_listings,
+            limit=5,
+            product_keyword=product_keyword,
+            target_price=target_price,
+            moq_preference=moq_preference,
+            supplier_preference=supplier_preference,
+        )
+        groups.append(
+            {
+                "platform": platform,
+                "suppliers": [supplier.model_dump(mode="json") for supplier in suppliers],
+            }
+        )
+    return groups
