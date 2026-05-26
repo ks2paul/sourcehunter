@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4.1-mini", validation_alias="OPENAI_MODEL")
     ai_keyword_expansion_enabled: bool = Field(default=True, validation_alias="AI_KEYWORD_EXPANSION_ENABLED")
     database_path: str = Field(default="data/sourcehunter.sqlite3", validation_alias="SOURCEHUNTER_DB_PATH")
+    elimapi_api_key: str | None = Field(default=None, validation_alias="ELIMAPI_API_KEY")
+    elimapi_base_url: str = Field(default="https://openapi.elim.asia/v1", validation_alias="ELIMAPI_BASE_URL")
 
     model_config = SettingsConfigDict(
         env_file=(".env.local", "../.env.local"),

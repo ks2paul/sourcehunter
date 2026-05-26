@@ -12,6 +12,7 @@ class RawListing(BaseModel):
     source_url: str
     product_url: str | None = None
     supplier_url: str | None = None
+    raw_supplier_id: str | None = None
     raw_product_name: str | None = None
     raw_company_name: str | None = None
     raw_price: str | None = None
@@ -19,6 +20,7 @@ class RawListing(BaseModel):
     raw_location: str | None = None
     raw_years_in_business: str | None = None
     raw_contact_text: str | None = None
+    raw_supplier_type: str | None = None
     scraped_at: datetime = Field(default_factory=utc_now)
 
 

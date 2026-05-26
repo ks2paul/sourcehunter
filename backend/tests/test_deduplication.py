@@ -189,3 +189,31 @@ def test_deduplicate_suppliers_returns_no_unverified_suppliers_for_factory_only(
     ]
 
     assert deduplicate_suppliers(listings, product_keyword="handheld fan", supplier_preference="Factory Only") == []
+
+
+def test_deduplicate_suppliers_factory_only_excludes_verified_non_factories():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="merchant-shop",
+            raw_product_name="Handheld Fan",
+            raw_company_name=None,
+            raw_supplier_type="merchant",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/2.html",
+            raw_supplier_id="factory-shop",
+            raw_product_name="Handheld Fan",
+            raw_company_name=None,
+            raw_supplier_type="factory",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="handheld fan", supplier_preference="Factory Only")
+
+    assert len(suppliers) == 1
+    assert suppliers[0].supplier_type == "Verified Factory"

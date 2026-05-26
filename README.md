@@ -57,6 +57,13 @@ Search jobs are persisted to SQLite by default:
 SOURCEHUNTER_DB_PATH=data/sourcehunter.sqlite3
 ```
 
+1688 API integration:
+
+```bash
+ELIMAPI_API_KEY=
+ELIMAPI_BASE_URL=https://openapi.elim.asia/v1
+```
+
 ### AI Keyword Expansion
 
 SourceHunter supports OpenAI-compatible keyword expansion through local environment variables:
@@ -72,7 +79,7 @@ If no API key is configured, or if the provider call fails, the backend falls ba
 
 ### Playwright
 
-The backend includes a Playwright scraping framework, a Made-in-China adapter for source-backed raw listings, and a conservative 1688 adapter. If 1688 blocks automation with a verification challenge, SourceHunter records a scrape failure instead of fabricating supplier data.
+The backend includes a Playwright scraping framework, a Made-in-China adapter for source-backed raw listings, and an Elimapi-backed 1688 adapter. If `ELIMAPI_API_KEY` is not configured, SourceHunter records a scrape failure instead of fabricating 1688 supplier data.
 
 Install browser binaries only when working on real platform adapters:
 
@@ -120,10 +127,10 @@ npm run build
 
 ## Current Build
 
-The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, attempts 1688 retrieval with anti-bot detection, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
+The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, retrieves 1688 listings through Elimapi when configured, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
 
 Known limitations:
 
-- 1688 often blocks browser automation with human verification; blocked attempts are reported as failures.
+- 1688 browser automation is not used as the primary path because it often triggers human verification. Configure `ELIMAPI_API_KEY` for reliable 1688 retrieval.
 - Supplier contact extraction is only shown when reliable public data is available.
 - Factory-only filtering is conservative: if factory status cannot be verified, SourceHunter returns fewer or zero results instead of guessing.

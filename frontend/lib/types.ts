@@ -38,6 +38,7 @@ export type RawListing = {
   source_url: string;
   product_url: string | null;
   supplier_url: string | null;
+  raw_supplier_id: string | null;
   raw_product_name: string | null;
   raw_company_name: string | null;
   raw_price: string | null;
@@ -45,6 +46,7 @@ export type RawListing = {
   raw_location: string | null;
   raw_years_in_business: string | null;
   raw_contact_text: string | null;
+  raw_supplier_type: string | null;
   scraped_at: string;
 };
 

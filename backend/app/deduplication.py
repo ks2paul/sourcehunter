@@ -57,7 +57,7 @@ def deduplicate_suppliers(
         for identity, group in grouped.items()
     ]
     if supplier_preference == "Factory Only":
-        suppliers = [supplier for supplier in suppliers if supplier.supplier_type != "Supplier Type Unknown"]
+        suppliers = [supplier for supplier in suppliers if supplier.supplier_type == "Verified Factory"]
 
     ranked_suppliers = sorted(
         suppliers,
@@ -67,6 +67,10 @@ def deduplicate_suppliers(
 
 
 def _supplier_identity(listing: RawListing) -> str | None:
+    supplier_id = _normalize_text(listing.raw_supplier_id)
+    if supplier_id:
+        return f"supplier_id:{listing.platform.lower()}:{supplier_id}"
+
     normalized_url = _normalize_url(listing.supplier_url)
     if normalized_url:
         return f"url:{normalized_url}"
@@ -108,7 +112,7 @@ def _build_supplier(
     return UniqueSupplier(
         supplier_id=_supplier_id(identity),
         company_name=company_name or "Company Name Unavailable",
-        supplier_type=_supplier_type(company_name),
+        supplier_type=_supplier_type(listings),
         supplier_url=supplier_url,
         platforms=platforms,
         listing_count=len(listings),
@@ -160,7 +164,7 @@ def _score_supplier(
 ) -> dict[str, int]:
     return {
         "category_specialization": min(15, len(listings) * 5),
-        "factory_likelihood": _factory_likelihood_score(company_name),
+        "factory_likelihood": _factory_likelihood_score(company_name, listings),
         "price_competitiveness": _price_score(listings, target_price),
         "moq_suitability": _moq_score(listings, moq_preference),
         "export_readiness": _export_readiness_score(listings, supplier_url),
@@ -261,7 +265,9 @@ def _business_maturity_score(listings: list[RawListing]) -> int:
     return 2
 
 
-def _factory_likelihood_score(company_name: str | None) -> int:
+def _factory_likelihood_score(company_name: str | None, listings: list[RawListing] | None = None) -> int:
+    if listings and any((listing.raw_supplier_type or "").lower() == "factory" for listing in listings):
+        return 10
     normalized = _normalize_text(company_name) or ""
     if not normalized:
         return 0
@@ -274,7 +280,14 @@ def _factory_likelihood_score(company_name: str | None) -> int:
     return 1
 
 
-def _supplier_type(company_name: str | None) -> str:
+def _supplier_type(listings: list[RawListing]) -> str:
+    supplier_types = {(listing.raw_supplier_type or "").lower() for listing in listings}
+    if "factory" in supplier_types:
+        return "Verified Factory"
+    if "merchant" in supplier_types:
+        return "Verified Merchant"
+    if "seller" in supplier_types:
+        return "Verified Seller"
     return "Supplier Type Unknown"
 
 
