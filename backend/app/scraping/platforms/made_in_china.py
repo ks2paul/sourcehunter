@@ -60,6 +60,9 @@ class MadeInChinaAdapter:
                   imageAlt ||
                   ''
                 ).trim();
+                if (!productName || productName.toLowerCase() === 'video' || href.includes('#slideVideo')) {
+                  return null;
+                }
 
                 let supplierOrigin = null;
                 try {

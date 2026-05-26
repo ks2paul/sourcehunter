@@ -20,6 +20,7 @@ async def test_extract_listings_from_search_page_uses_only_visible_source_data()
         <a title="Rechargeable Turbo Mini Fan" href="https://supplier-a.en.made-in-china.com/product/abc.html">
           Rechargeable Turbo Mini Fan
         </a>
+        <a href="https://supplier-a.en.made-in-china.com/product/abc.html#slideVideo">Video</a>
         <div class="price">US$3.50-4.50</div>
         <div class="moq">1,000 Pieces (MOQ)</div>
         <a class="compnay-name" href="https://supplier-a.en.made-in-china.com/">Shenzhen Realmark Industrial Co., Ltd.</a>

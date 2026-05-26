@@ -9,7 +9,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 2
+SUPPLIER_CACHE_VERSION = 4
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -38,7 +38,7 @@ async def get_raw_listings(job_id: str) -> RawListingsResponse:
     if cached_result is not None:
         return RawListingsResponse(job_id=job.job_id, **cached_result)
 
-    scrape_result = await create_scraping_worker().search_all(job.product_keyword)
+    scrape_result = await _search_for_job(job)
     payload = {
         "status": "completed" if scrape_result.listings else "no_results",
         "listings": [listing.model_dump(mode="json") for listing in scrape_result.listings],
@@ -60,7 +60,8 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     if cached_result is not None and cached_result.get("cache_version") == SUPPLIER_CACHE_VERSION:
         return SuppliersResponse(job_id=job.job_id, **cached_result)
 
-    scrape_result = await create_scraping_worker().search_all(job.product_keyword)
+    scrape_result = await _search_for_job(job)
+    platform_keywords = _platform_search_keywords(job)
     suppliers = deduplicate_suppliers(
         scrape_result.listings,
         product_keyword=job.product_keyword,
@@ -71,6 +72,7 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     platform_supplier_groups = _platform_supplier_groups(
         listings=scrape_result.listings,
         product_keyword=job.product_keyword,
+        platform_keywords=platform_keywords,
         target_price=job.target_price,
         moq_preference=job.moq_preference,
         supplier_preference=job.supplier_preference,
@@ -89,9 +91,40 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     )
 
 
+async def _search_for_job(job: SearchJob):
+    worker = create_scraping_worker()
+    if not hasattr(worker, "search_with_platform_keywords"):
+        return await worker.search_all(job.product_keyword)
+    return await worker.search_with_platform_keywords(
+        default_keyword=job.product_keyword,
+        platform_keywords=_platform_search_keywords(job),
+    )
+
+
+def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
+    english_keyword = _made_in_china_keyword(job)
+    chinese_keyword = _first_keyword(job.keyword_expansion.chinese_keywords, job.product_keyword)
+    return {
+        "Made-in-China": english_keyword,
+        "1688": chinese_keyword,
+    }
+
+
+def _made_in_china_keyword(job: SearchJob) -> str:
+    normalized = job.product_keyword.strip().lower()
+    if "咖啡机" in normalized:
+        return "home coffee machine" if "台式" in normalized or "桌面" in normalized else "coffee maker"
+    return _first_keyword(job.keyword_expansion.english_keywords, job.product_keyword)
+
+
+def _first_keyword(keywords: list[str], fallback: str) -> str:
+    return next((keyword for keyword in keywords if keyword.strip()), fallback)
+
+
 def _platform_supplier_groups(
     listings,
     product_keyword: str,
+    platform_keywords: dict[str, str],
     target_price: float | None,
     moq_preference: int | None,
     supplier_preference: str | None,
@@ -102,7 +135,7 @@ def _platform_supplier_groups(
         suppliers = deduplicate_suppliers(
             platform_listings,
             limit=5,
-            product_keyword=product_keyword,
+            product_keyword=platform_keywords.get(platform, product_keyword),
             target_price=target_price,
             moq_preference=moq_preference,
             supplier_preference=supplier_preference,

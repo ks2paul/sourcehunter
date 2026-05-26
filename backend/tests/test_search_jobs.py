@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models import SearchJobCreate, SupplierPreference
+from app.models import KeywordExpansion, SearchJob, SearchJobCreate, SearchJobStatus, SearchProgress, SupplierPreference, utc_now
 from app.storage import SearchJobRepository
 
 
@@ -116,6 +116,34 @@ def test_get_search_job_api_returns_404_for_missing_job():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Search job not found"
+
+
+def test_platform_search_keywords_use_english_for_made_in_china_and_chinese_for_1688():
+    from app.routes import search_jobs
+
+    job = SearchJob(
+        job_id="job_test",
+        product_keyword="台式咖啡机",
+        target_price=None,
+        moq_preference=None,
+        supplier_preference=SupplierPreference.FACTORY_PREFERRED,
+        status=SearchJobStatus.COMPLETED,
+        progress=SearchProgress(stage="completed", message="completed"),
+        keyword_expansion=KeywordExpansion(
+            english_keywords=["desktop coffee machine"],
+            chinese_keywords=["台式咖啡机"],
+            variation_keywords=[],
+            confidence=0.9,
+            source="deterministic_v1",
+        ),
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+
+    assert search_jobs._platform_search_keywords(job) == {
+        "Made-in-China": "home coffee machine",
+        "1688": "台式咖啡机",
+    }
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):

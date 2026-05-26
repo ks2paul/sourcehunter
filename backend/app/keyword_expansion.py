@@ -63,6 +63,25 @@ KNOWN_EXPANSIONS = {
         confidence=0.88,
         source="deterministic_v1",
     ),
+    "台式咖啡机": KeywordExpansion(
+        english_keywords=[
+            "home coffee machine",
+            "coffee maker",
+            "espresso machine",
+            "tabletop coffee maker",
+            "automatic coffee maker",
+        ],
+        chinese_keywords=[
+            "台式咖啡机",
+            "桌面咖啡机",
+            "意式咖啡机",
+            "家用咖啡机",
+            "自动咖啡机",
+        ],
+        variation_keywords=["semi automatic espresso machine", "bean to cup coffee machine", "capsule coffee machine"],
+        confidence=0.82,
+        source="deterministic_v1",
+    ),
 }
 
 
