@@ -286,6 +286,21 @@ def test_get_unique_suppliers_returns_platform_specific_top_five(monkeypatch):
     assert len(platform_groups[1]["suppliers"]) == 5
     assert all(supplier["platforms"] == ["Made-in-China"] for supplier in platform_groups[0]["suppliers"])
     assert all(supplier["platforms"] == ["1688"] for supplier in platform_groups[1]["suppliers"])
+    diagnostics = response.json()["platform_diagnostics"]
+    assert diagnostics[0] == {
+        "platform": "Made-in-China",
+        "searched_keyword": "handheld fan",
+        "raw_listing_count": 6,
+        "unique_supplier_count": 5,
+        "failure": None,
+    }
+    assert diagnostics[1] == {
+        "platform": "1688",
+        "searched_keyword": "手持风扇",
+        "raw_listing_count": 6,
+        "unique_supplier_count": 5,
+        "failure": None,
+    }
 
 
 def test_get_unique_suppliers_honors_factory_only_without_guessing(monkeypatch):

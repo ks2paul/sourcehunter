@@ -9,7 +9,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 4
+SUPPLIER_CACHE_VERSION = 5
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -82,6 +82,12 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         "status": "completed" if suppliers else "no_results",
         "suppliers": [supplier.model_dump(mode="json") for supplier in suppliers],
         "platform_supplier_groups": platform_supplier_groups,
+        "platform_diagnostics": _platform_diagnostics(
+            listings=scrape_result.listings,
+            platform_supplier_groups=platform_supplier_groups,
+            platform_keywords=platform_keywords,
+            failures=[failure.model_dump(mode="json") for failure in scrape_result.failures],
+        ),
         "failures": [failure.model_dump(mode="json") for failure in scrape_result.failures],
     }
     repository.save_supplier_result(job.job_id, payload)
@@ -147,3 +153,25 @@ def _platform_supplier_groups(
             }
         )
     return groups
+
+
+def _platform_diagnostics(
+    listings,
+    platform_supplier_groups: list[dict],
+    platform_keywords: dict[str, str],
+    failures: list[dict],
+) -> list[dict]:
+    diagnostics = []
+    for group in platform_supplier_groups:
+        platform = group["platform"]
+        failure = next((item for item in failures if item.get("platform") == platform), None)
+        diagnostics.append(
+            {
+                "platform": platform,
+                "searched_keyword": platform_keywords.get(platform),
+                "raw_listing_count": sum(1 for listing in listings if listing.platform == platform),
+                "unique_supplier_count": len(group["suppliers"]),
+                "failure": failure,
+            }
+        )
+    return diagnostics

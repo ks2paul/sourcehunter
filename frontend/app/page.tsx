@@ -275,6 +275,20 @@ export default function HomePage() {
               {suppliers ? (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-slate-800">Supplier shortlists</h3>
+                  {(suppliers.platform_diagnostics ?? []).length > 0 ? (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {(suppliers.platform_diagnostics ?? []).map((item) => (
+                        <div key={item.platform} className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+                          <div className="font-medium text-slate-900">{item.platform}</div>
+                          <p className="mt-1 text-slate-600">Keyword: {item.searched_keyword ?? "Unavailable"}</p>
+                          <p className="mt-1 text-slate-600">
+                            Raw listings: {item.raw_listing_count} · Unique suppliers: {item.unique_supplier_count}
+                          </p>
+                          {item.failure ? <p className="mt-1 text-red-700">{item.failure.message}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {suppliers.failures.length > 0 ? (
                     <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                       {suppliers.failures.map((failure) => (

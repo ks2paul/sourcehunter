@@ -66,6 +66,7 @@ class SuppliersResponse(BaseModel):
     status: str
     suppliers: list[dict[str, Any]]
     platform_supplier_groups: list[dict[str, Any]] = Field(default_factory=list)
+    platform_diagnostics: list[dict[str, Any]] = Field(default_factory=list)
     failures: list[dict[str, Any]]
     cache_version: int | None = None
 

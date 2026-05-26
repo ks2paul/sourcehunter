@@ -94,5 +94,12 @@ export type SuppliersResponse = {
     platform: string;
     suppliers: UniqueSupplier[];
   }>;
+  platform_diagnostics?: Array<{
+    platform: string;
+    searched_keyword: string | null;
+    raw_listing_count: number;
+    unique_supplier_count: number;
+    failure: RawListingsResponse["failures"][number] | null;
+  }>;
   failures: RawListingsResponse["failures"];
 };
