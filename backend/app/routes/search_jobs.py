@@ -9,6 +9,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
+SUPPLIER_CACHE_VERSION = 2
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -56,7 +57,7 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Search job not found")
     cached_result = repository.get_supplier_result(job.job_id)
-    if cached_result is not None and "platform_supplier_groups" in cached_result:
+    if cached_result is not None and cached_result.get("cache_version") == SUPPLIER_CACHE_VERSION:
         return SuppliersResponse(job_id=job.job_id, **cached_result)
 
     scrape_result = await create_scraping_worker().search_all(job.product_keyword)
@@ -75,6 +76,7 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
         supplier_preference=job.supplier_preference,
     )
     payload = {
+        "cache_version": SUPPLIER_CACHE_VERSION,
         "status": "completed" if suppliers else "no_results",
         "suppliers": [supplier.model_dump(mode="json") for supplier in suppliers],
         "platform_supplier_groups": platform_supplier_groups,

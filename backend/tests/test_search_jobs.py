@@ -309,6 +309,7 @@ def test_get_unique_suppliers_uses_cached_result(monkeypatch):
     search_jobs.repository.save_supplier_result(
         created["job_id"],
         {
+            "cache_version": search_jobs.SUPPLIER_CACHE_VERSION,
             "status": "completed",
             "suppliers": [
                 {
@@ -394,3 +395,49 @@ def test_get_unique_suppliers_refreshes_legacy_cache_without_platform_groups(mon
     assert response.status_code == 200
     assert response.json()["platform_supplier_groups"][1]["platform"] == "1688"
     assert len(response.json()["platform_supplier_groups"][1]["suppliers"]) == 1
+
+
+def test_get_unique_suppliers_refreshes_stale_platform_cache(monkeypatch):
+    from app.scraping.models import RawListing, ScrapeResult
+    from app.routes import search_jobs
+
+    class FakeWorker:
+        async def search_all(self, keyword: str) -> ScrapeResult:
+            return ScrapeResult(
+                listings=[
+                    RawListing(
+                        platform="Made-in-China",
+                        source_url="https://www.made-in-china.com/search",
+                        product_url="https://supplier-a.en.made-in-china.com/product/one.html",
+                        supplier_url="https://supplier-a.en.made-in-china.com/",
+                        raw_product_name="Rechargeable Handheld Fan",
+                        raw_company_name="Fresh Made-in-China Supplier",
+                        raw_price="US$2.50",
+                        raw_moq="100 Pieces (MOQ)",
+                    )
+                ],
+                failures=[],
+            )
+
+    monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
+    client = TestClient(app)
+    created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+    search_jobs.repository.save_supplier_result(
+        created["job_id"],
+        {
+            "status": "completed",
+            "suppliers": [],
+            "platform_supplier_groups": [
+                {"platform": "Made-in-China", "suppliers": []},
+                {"platform": "1688", "suppliers": []},
+            ],
+            "failures": [],
+        },
+    )
+
+    response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
+
+    assert response.status_code == 200
+    assert response.json()["cache_version"] == search_jobs.SUPPLIER_CACHE_VERSION
+    assert response.json()["platform_supplier_groups"][0]["platform"] == "Made-in-China"
+    assert len(response.json()["platform_supplier_groups"][0]["suppliers"]) == 1

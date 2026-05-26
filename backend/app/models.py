@@ -67,6 +67,7 @@ class SuppliersResponse(BaseModel):
     suppliers: list[dict[str, Any]]
     platform_supplier_groups: list[dict[str, Any]] = Field(default_factory=list)
     failures: list[dict[str, Any]]
+    cache_version: int | None = None
 
 
 def utc_now() -> datetime:

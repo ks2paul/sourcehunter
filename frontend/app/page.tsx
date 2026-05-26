@@ -118,14 +118,11 @@ export default function HomePage() {
   return (
     <main className="min-h-screen">
       <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto max-w-6xl px-6 py-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-950">SourceHunter</h1>
             <p className="text-sm text-slate-600">Supplier discovery foundation build</p>
           </div>
-          <span className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-sm text-amber-900">
-            Made-in-China raw listings enabled
-          </span>
         </div>
       </section>
 
@@ -232,10 +229,6 @@ export default function HomePage() {
                 <Info label="Stage" value={job.progress.stage} />
                 <Info label="Confidence" value={`${Math.round(job.keyword_expansion.confidence * 100)}%`} />
               </div>
-
-              <p className="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                {job.progress.message}
-              </p>
 
               <div className="flex flex-wrap gap-3">
                 <button
