@@ -30,10 +30,6 @@ export default function HomePage() {
   const [rfqDraft, setRfqDraft] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const sortedSuppliers = useMemo(
-    () => (suppliers ? sortSuppliers(suppliers.suppliers, supplierSortMode) : []),
-    [suppliers, supplierSortMode],
-  );
   const sortedPlatformGroups = useMemo(
     () =>
       (suppliers?.platform_supplier_groups ?? []).map((group) => ({
@@ -116,7 +112,7 @@ export default function HomePage() {
     }
     const filename = `${job?.product_keyword ?? "sourcehunter"}-${suppliers.job_id}-suppliers.csv`;
     const platformSuppliers = sortedPlatformGroups.flatMap((group) => group.suppliers);
-    downloadCsv(filename, suppliersToCsv([...sortedSuppliers, ...platformSuppliers]));
+    downloadCsv(filename, suppliersToCsv(platformSuppliers));
   }
 
   return (
@@ -134,68 +130,90 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-[380px_1fr]">
-        <form onSubmit={handleSubmit} className="rounded border border-slate-200 bg-white p-5">
-          <h2 className="text-base font-semibold text-slate-950">Search input</h2>
+        <aside className="space-y-4">
+          <form onSubmit={handleSubmit} className="rounded border border-slate-200 bg-white p-5">
+            <h2 className="text-base font-semibold text-slate-950">Search input</h2>
 
-          <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="product_keyword">
-            Product keyword
-          </label>
-          <input
-            id="product_keyword"
-            value={productKeyword}
-            onChange={(event) => setProductKeyword(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            required
-          />
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="product_keyword">
+              Product keyword
+            </label>
+            <input
+              id="product_keyword"
+              value={productKeyword}
+              onChange={(event) => setProductKeyword(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              required
+            />
 
-          <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="target_price">
-            Target price
-          </label>
-          <input
-            id="target_price"
-            value={targetPrice}
-            onChange={(event) => setTargetPrice(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            inputMode="decimal"
-            placeholder="Optional"
-          />
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="target_price">
+              Target price
+            </label>
+            <input
+              id="target_price"
+              value={targetPrice}
+              onChange={(event) => setTargetPrice(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              inputMode="decimal"
+              placeholder="Optional"
+            />
 
-          <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="moq_preference">
-            MOQ preference
-          </label>
-          <input
-            id="moq_preference"
-            value={moqPreference}
-            onChange={(event) => setMoqPreference(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            inputMode="numeric"
-            placeholder="Optional"
-          />
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="moq_preference">
+              MOQ preference
+            </label>
+            <input
+              id="moq_preference"
+              value={moqPreference}
+              onChange={(event) => setMoqPreference(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              inputMode="numeric"
+              placeholder="Optional"
+            />
 
-          <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="supplier_preference">
-            Supplier preference
-          </label>
-          <select
-            id="supplier_preference"
-            value={supplierPreference}
-            onChange={(event) => setSupplierPreference(event.target.value as SupplierPreference)}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-          >
-            {supplierPreferences.map((preference) => (
-              <option key={preference} value={preference}>
-                {preference}
-              </option>
-            ))}
-          </select>
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="supplier_preference">
+              Supplier preference
+            </label>
+            <select
+              id="supplier_preference"
+              value={supplierPreference}
+              onChange={(event) => setSupplierPreference(event.target.value as SupplierPreference)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+            >
+              {supplierPreferences.map((preference) => (
+                <option key={preference} value={preference}>
+                  {preference}
+                </option>
+              ))}
+            </select>
 
-          <button
-            type="submit"
-            className="mt-5 w-full rounded bg-slate-950 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            disabled={isLoading}
-          >
-            {isLoading ? "Creating job..." : "Create search job"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="mt-5 w-full rounded bg-slate-950 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating job..." : "Create search job"}
+            </button>
+          </form>
+
+          {job ? (
+            <div className="space-y-4 rounded border border-slate-200 bg-white p-5">
+              <KeywordList
+                title="English keywords"
+                items={job.keyword_expansion.english_keywords}
+                tone="blue"
+              />
+              <KeywordList
+                title="Chinese keywords"
+                items={job.keyword_expansion.chinese_keywords}
+                tone="emerald"
+              />
+              <KeywordList
+                title="Variation keywords"
+                items={job.keyword_expansion.variation_keywords}
+                tone="amber"
+              />
+            </div>
+          ) : null}
+        </aside>
 
         <section className="rounded border border-slate-200 bg-white p-5">
           <h2 className="text-base font-semibold text-slate-950">Result</h2>
@@ -218,10 +236,6 @@ export default function HomePage() {
               <p className="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                 {job.progress.message}
               </p>
-
-              <KeywordList title="English keywords" items={job.keyword_expansion.english_keywords} />
-              <KeywordList title="Chinese keywords" items={job.keyword_expansion.chinese_keywords} />
-              <KeywordList title="Variation keywords" items={job.keyword_expansion.variation_keywords} />
 
               <div className="flex flex-wrap gap-3">
                 <button
@@ -254,7 +268,7 @@ export default function HomePage() {
                       ))}
                     </div>
                   ) : null}
-                  {suppliers.suppliers.length > 0 ? (
+                  {sortedPlatformGroups.some((group) => group.suppliers.length > 0) ? (
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap gap-2">
@@ -281,21 +295,17 @@ export default function HomePage() {
                           Export CSV
                         </button>
                       </div>
-                      <SupplierGroup
-                        title="Overall Top 5"
-                        suppliers={sortedSuppliers}
-                        productKeyword={job.product_keyword}
-                        onBuildRfq={setRfqDraft}
-                      />
-                      {sortedPlatformGroups.map((group) => (
-                        <SupplierGroup
-                          key={group.platform}
-                          title={`${group.platform} Top 5`}
-                          suppliers={group.suppliers}
-                          productKeyword={job.product_keyword}
-                          onBuildRfq={setRfqDraft}
-                        />
-                      ))}
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {sortedPlatformGroups.map((group) => (
+                          <SupplierGroup
+                            key={group.platform}
+                            title={`${group.platform} Top 5`}
+                            suppliers={group.suppliers}
+                            productKeyword={job.product_keyword}
+                            onBuildRfq={setRfqDraft}
+                          />
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-500">No unique suppliers returned.</p>
@@ -500,14 +510,20 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function KeywordList({ title, items }: { title: string; items: string[] }) {
+function KeywordList({ title, items, tone }: { title: string; items: string[]; tone: "blue" | "emerald" | "amber" }) {
+  const toneClassName = {
+    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+  }[tone];
+
   return (
     <div>
       <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       {items.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
           {items.map((item) => (
-            <span key={item} className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700">
+            <span key={item} className={`rounded border px-2 py-1 text-sm ${toneClassName}`}>
               {item}
             </span>
           ))}
