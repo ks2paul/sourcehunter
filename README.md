@@ -140,6 +140,14 @@ cd frontend
 npm run build
 ```
 
+## Continuous Integration
+
+GitHub Actions runs on pushes and pull requests to `main`:
+
+- Backend tests with Python 3.11 and Playwright Chromium.
+- Frontend tests with Node 22.
+- Frontend production build.
+
 ## Current Build
 
 The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, retrieves 1688 listings through Elimapi when configured, deduplicates suppliers, returns Made-in-China Top 5 and 1688 Top 5 supplier shortlists, scores suppliers from source-backed fields, and shows recommendation actions.
