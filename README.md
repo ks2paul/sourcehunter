@@ -18,6 +18,8 @@ SourceHunter must return reliable supplier data or fewer results. It must never 
 - English Data Model: `docs/DATA_MODEL.en.md`
 - Chinese Roadmap: `docs/IMPLEMENTATION_ROADMAP.zh.md`
 - English Roadmap: `docs/IMPLEMENTATION_ROADMAP.en.md`
+- Chinese Deployment Prep: `docs/DEPLOYMENT_PREP.zh.md`
+- English Deployment Prep: `docs/DEPLOYMENT_PREP.en.md`
 
 ## Local Development
 
@@ -74,6 +76,7 @@ SOURCEHUNTER_DB_PATH=data/sourcehunter.sqlite3
 ```bash
 ELIMAPI_API_KEY=
 ELIMAPI_BASE_URL=https://openapi.elim.asia/v1
+SOURCEHUNTER_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 ### AI Keyword Expansion
@@ -139,7 +142,7 @@ npm run build
 
 ## Current Build
 
-The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, retrieves 1688 listings through Elimapi when configured, deduplicates suppliers, returns Top 5 unique suppliers, scores suppliers from source-backed fields, and shows recommendation actions.
+The current build creates persistent search jobs, expands sourcing keywords, retrieves Made-in-China raw listings, retrieves 1688 listings through Elimapi when configured, deduplicates suppliers, returns Made-in-China Top 5 and 1688 Top 5 supplier shortlists, scores suppliers from source-backed fields, and shows recommendation actions.
 Supplier and raw listing results are cached in SQLite after the first retrieval for each search job. The UI supports CSV export and bilingual RFQ draft generation.
 
 Known limitations:

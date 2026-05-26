@@ -38,6 +38,13 @@ export default function HomePage() {
       })),
     [suppliers, supplierSortMode],
   );
+  const rawListingCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const listing of rawListings?.listings ?? []) {
+      counts.set(listing.platform, (counts.get(listing.platform) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([platform, count]) => ({ platform, count }));
+  }, [rawListings]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -249,6 +256,22 @@ export default function HomePage() {
                 </button>
               </div>
 
+              {isFetchingSuppliers ? (
+                <StatusNotice
+                  tone="blue"
+                  title="Searching supplier platforms"
+                  message="SourceHunter is checking Made-in-China and 1688, deduplicating suppliers, and ranking each platform separately."
+                />
+              ) : null}
+
+              {isFetchingListings ? (
+                <StatusNotice
+                  tone="blue"
+                  title="Fetching raw listings"
+                  message="SourceHunter is collecting source-backed listings for inspection."
+                />
+              ) : null}
+
               {suppliers ? (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-slate-800">Supplier shortlists</h3>
@@ -294,6 +317,7 @@ export default function HomePage() {
                             key={group.platform}
                             title={`${group.platform} Top 5`}
                             suppliers={group.suppliers}
+                            failureMessage={platformFailureMessage(suppliers, group.platform)}
                             productKeyword={job.product_keyword}
                             onBuildRfq={setRfqDraft}
                           />
@@ -332,6 +356,18 @@ export default function HomePage() {
               {rawListings ? (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-slate-800">Raw listings</h3>
+                  {rawListingCounts.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {rawListingCounts.map((item) => (
+                        <span
+                          key={item.platform}
+                          className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-700"
+                        >
+                          {item.platform}: {item.count}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   {rawListings.failures.length > 0 ? (
                     <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                       {rawListings.failures.map((failure) => (
@@ -390,17 +426,24 @@ export default function HomePage() {
 function SupplierGroup({
   title,
   suppliers,
+  failureMessage,
   productKeyword,
   onBuildRfq,
 }: {
   title: string;
   suppliers: UniqueSupplier[];
+  failureMessage?: string;
   productKeyword: string;
   onBuildRfq: (draft: string) => void;
 }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+          {suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}
+        </span>
+      </div>
       {suppliers.length > 0 ? (
         suppliers.map((supplier) => (
           <SupplierCard
@@ -411,7 +454,10 @@ function SupplierGroup({
           />
         ))
       ) : (
-        <p className="rounded border border-slate-200 p-3 text-sm text-slate-500">No suppliers returned for this group.</p>
+        <div className="rounded border border-slate-200 p-3 text-sm text-slate-500">
+          <p>No suppliers returned for this group.</p>
+          {failureMessage ? <p className="mt-1 text-red-700">{failureMessage}</p> : null}
+        </div>
       )}
     </div>
   );
@@ -501,6 +547,24 @@ function Info({ label, value }: { label: string; value: string }) {
       <div className="mt-1 break-words text-sm font-medium text-slate-950">{value}</div>
     </div>
   );
+}
+
+function StatusNotice({ title, message, tone }: { title: string; message: string; tone: "blue" }) {
+  const toneClassName = {
+    blue: "border-blue-200 bg-blue-50 text-blue-800",
+  }[tone];
+
+  return (
+    <div className={`rounded border p-3 text-sm ${toneClassName}`}>
+      <div className="font-medium">{title}</div>
+      <p className="mt-1">{message}</p>
+    </div>
+  );
+}
+
+function platformFailureMessage(suppliers: SuppliersResponse, platform: string): string | undefined {
+  const failure = suppliers.failures.find((item) => item.platform === platform);
+  return failure?.message;
 }
 
 function KeywordList({ title, items, tone }: { title: string; items: string[]; tone: "blue" | "emerald" | "amber" }) {

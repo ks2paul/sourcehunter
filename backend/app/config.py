@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     database_path: str = Field(default="data/sourcehunter.sqlite3", validation_alias="SOURCEHUNTER_DB_PATH")
     elimapi_api_key: str | None = Field(default=None, validation_alias="ELIMAPI_API_KEY")
     elimapi_base_url: str = Field(default="https://openapi.elim.asia/v1", validation_alias="ELIMAPI_BASE_URL")
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        validation_alias="SOURCEHUNTER_CORS_ORIGINS",
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     model_config = SettingsConfigDict(
         env_file=(".env.local", "../.env.local"),
