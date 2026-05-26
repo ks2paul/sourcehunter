@@ -5,11 +5,12 @@ from app.models import RawListingsResponse, SearchJob, SearchJobCreate, Supplier
 from app.scraping.platforms.elimapi_1688 import Elimapi1688Adapter
 from app.scraping.platforms.made_in_china import MadeInChinaAdapter
 from app.scraping.worker import ScrapingWorker
+from app.sourcing_intent import china_1688_finished_product_keyword, made_in_china_finished_product_keyword
 from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 5
+SUPPLIER_CACHE_VERSION = 6
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -108,19 +109,16 @@ async def _search_for_job(job: SearchJob):
 
 
 def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
-    english_keyword = _made_in_china_keyword(job)
-    chinese_keyword = _first_keyword(job.keyword_expansion.chinese_keywords, job.product_keyword)
     return {
-        "Made-in-China": english_keyword,
-        "1688": chinese_keyword,
+        "Made-in-China": made_in_china_finished_product_keyword(
+            job.product_keyword,
+            job.keyword_expansion.english_keywords,
+        ),
+        "1688": china_1688_finished_product_keyword(
+            job.product_keyword,
+            job.keyword_expansion.chinese_keywords,
+        ),
     }
-
-
-def _made_in_china_keyword(job: SearchJob) -> str:
-    normalized = job.product_keyword.strip().lower()
-    if "咖啡机" in normalized:
-        return "home coffee machine" if "台式" in normalized or "桌面" in normalized else "coffee maker"
-    return _first_keyword(job.keyword_expansion.english_keywords, job.product_keyword)
 
 
 def _first_keyword(keywords: list[str], fallback: str) -> str:

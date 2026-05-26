@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 
 from app.scraping.models import RawListing
+from app.sourcing_intent import looks_like_raw_material_result
 
 
 class SupplierProduct(BaseModel):
@@ -108,7 +109,6 @@ def _build_supplier(
         moq_preference=moq_preference,
         market_median_price=market_median_price,
     )
-    supplier_score = min(100, sum(score_breakdown.values()))
     supplier_type = _supplier_type(listings)
     risk_flags = _risk_flags(
         listings=listings,
@@ -117,6 +117,7 @@ def _build_supplier(
         target_price=target_price,
         market_median_price=market_median_price,
     )
+    supplier_score = _final_supplier_score(score_breakdown=score_breakdown, risk_flags=risk_flags)
     recommendation_tier = _recommendation_tier(
         supplier_score=supplier_score,
         risk_flags=risk_flags,
@@ -196,6 +197,15 @@ def _score_supplier(
         "business_maturity": _business_maturity_score(listings),
         "product_match_quality": _product_match_score(listings, product_keyword),
     }
+
+
+def _final_supplier_score(score_breakdown: dict[str, int], risk_flags: list[str]) -> int:
+    score = min(100, sum(score_breakdown.values()))
+    if "Listing appears to be raw material rather than a finished product." in risk_flags:
+        score -= 35
+    if "Product title may not match sourcing intent." in risk_flags:
+        score -= 20
+    return max(0, score)
 
 
 def _product_match_score(listings: list[RawListing], product_keyword: str | None) -> int:
@@ -378,6 +388,8 @@ def _risk_flags(
         score_breakdown["product_match_quality"] < 20 or _looks_like_manual_folding_fan(product_keyword, listings)
     ):
         flags.append("Product title may not match sourcing intent.")
+    if listings and all(looks_like_raw_material_result(listing.raw_product_name) for listing in listings):
+        flags.append("Listing appears to be raw material rather than a finished product.")
 
     known_prices = [_parse_lowest_number(listing.raw_price) for listing in listings]
     lowest_price = min((price for price in known_prices if price is not None), default=None)
@@ -415,6 +427,8 @@ def _looks_like_manual_folding_fan(product_keyword: str, listings: list[RawListi
 
 
 def _recommendation_tier(supplier_score: int, risk_flags: list[str]) -> str:
+    if "Listing appears to be raw material rather than a finished product." in risk_flags:
+        return "D"
     if "Product title may not match sourcing intent." in risk_flags:
         return "D"
     if supplier_score >= 70 and not risk_flags:
@@ -427,6 +441,8 @@ def _recommendation_tier(supplier_score: int, risk_flags: list[str]) -> str:
 
 
 def _recommended_action(tier: str, reasons: list[str], risk_flags: list[str]) -> str:
+    if "Listing appears to be raw material rather than a finished product." in risk_flags:
+        return "Do not shortlist raw material listings for finished-product sourcing"
     if "Product title may not match sourcing intent." in risk_flags:
         return "Do not shortlist until product match is verified"
     if "Price is far below market median; verify quotation." in risk_flags:

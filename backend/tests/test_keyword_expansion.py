@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from app.config import Settings
-from app.keyword_expansion import OpenAICompatibleKeywordExpander, expand_keywords
+from app.keyword_expansion import OpenAICompatibleKeywordExpander, deterministic_expand_keywords, expand_keywords
 
 
 @pytest.mark.anyio
@@ -59,3 +59,11 @@ async def test_expand_keywords_falls_back_when_openai_key_is_missing():
 
     assert expansion.source == "deterministic_v1"
     assert "手持风扇" in expansion.chinese_keywords
+
+
+def test_deterministic_expansion_turns_broad_personal_care_category_into_finished_goods_terms():
+    expansion = deterministic_expand_keywords("日化洗护用品")
+
+    assert "private label personal care products" in expansion.english_keywords
+    assert "洗发水" in expansion.chinese_keywords
+    assert "OEM personal care products" in expansion.variation_keywords

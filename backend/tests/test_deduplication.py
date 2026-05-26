@@ -242,6 +242,28 @@ def test_deduplicate_suppliers_flags_product_mismatch():
     assert supplier.recommended_action == "Do not shortlist until product match is verified"
 
 
+def test_deduplicate_suppliers_downgrades_raw_material_results_for_finished_goods_sourcing():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://supplier.example/product.html",
+            supplier_url="https://supplier.en.made-in-china.com/",
+            raw_product_name="Cosmetic Raw Material SLES Surfactant Chemical for Shampoo",
+            raw_company_name="Raw Chemical Supplier",
+            raw_price="US$1.20",
+            raw_moq="25 kg",
+        )
+    ]
+
+    supplier = deduplicate_suppliers(listings, product_keyword="private label personal care products")[0]
+
+    assert "Listing appears to be raw material rather than a finished product." in supplier.risk_flags
+    assert supplier.recommendation_tier == "D"
+    assert supplier.recommended_action == "Do not shortlist raw material listings for finished-product sourcing"
+    assert supplier.supplier_score < 40
+
+
 def test_deduplicate_suppliers_flags_abnormally_low_price_against_market_median():
     listings = [
         RawListing(

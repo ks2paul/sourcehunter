@@ -4,6 +4,7 @@ import httpx
 
 from app.config import Settings, get_settings
 from app.models import KeywordExpansion
+from app.sourcing_intent import broad_finished_product_expansion
 
 KNOWN_EXPANSIONS = {
     "handheld fan": KeywordExpansion(
@@ -89,6 +90,15 @@ def deterministic_expand_keywords(product_keyword: str) -> KeywordExpansion:
     normalized = product_keyword.strip().lower()
     if normalized in KNOWN_EXPANSIONS:
         return KNOWN_EXPANSIONS[normalized]
+    broad_expansion = broad_finished_product_expansion(product_keyword)
+    if broad_expansion:
+        return KeywordExpansion(
+            english_keywords=list(broad_expansion["english"]),
+            chinese_keywords=list(broad_expansion["chinese"]),
+            variation_keywords=list(broad_expansion["variation"]),
+            confidence=0.78,
+            source="deterministic_v1",
+        )
 
     return KeywordExpansion(
         english_keywords=[product_keyword.strip()],
@@ -123,6 +133,10 @@ class OpenAICompatibleKeywordExpander:
                             "role": "system",
                             "content": (
                                 "You expand product sourcing terminology for procurement. "
+                                "Prioritize finished goods suppliers, OEM/ODM, private label, "
+                                "and manufacturer search terms. Avoid raw material, ingredient, "
+                                "surfactant, or chemical feedstock terms unless the user explicitly "
+                                "asks for raw materials. "
                                 "Return only JSON with english_keywords, chinese_keywords, "
                                 "variation_keywords, and confidence. Do not invent suppliers, "
                                 "prices, contacts, URLs, or company names."

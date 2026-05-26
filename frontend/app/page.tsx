@@ -864,6 +864,7 @@ function translateRecommendedAction(action: string, language: Language): string 
       "Verify supplier details first": "先核实供应商信息",
       "Ask for quotation and MOQ": "询价并确认 MOQ",
       "Do not shortlist until product match is verified": "产品匹配确认前不要列入候选",
+      "Do not shortlist raw material listings for finished-product sourcing": "成品采购不要列入原料 listing",
       "Verify price authenticity before contacting": "联系前先核实价格真实性",
     }[action] ?? action
   );
@@ -881,6 +882,12 @@ function translateRiskFlag(flag: string, language: Language): string {
       "Supplier type unknown": "供应商类型未知",
       "Limited supplier maturity data": "供应商成熟度数据有限",
       "No public contact information": "暂无公开联系方式",
+      "Listing appears to be raw material rather than a finished product.": "该 listing 看起来是原料，不是成品。",
+      "Product title may not match sourcing intent.": "产品标题可能不符合采购意图。",
+      "Price unavailable; verify quotation before shortlisting.": "价格不可用，入选前需确认报价。",
+      "MOQ unavailable; confirm minimum order quantity.": "MOQ 不可用，需要确认最小起订量。",
+      "MOQ is high for trial order.": "MOQ 对试单偏高。",
+      "Price is far below market median; verify quotation.": "价格明显低于市场中位数，需要核实报价。",
     }[flag] ?? flag
   );
 }
@@ -891,8 +898,15 @@ function translateReason(reason: string, language: Language): string {
   }
   return (
     {
-      "Strong product match": "产品匹配度高",
-      "Good product match": "产品匹配度较好",
+      "Strong product keyword match.": "产品关键词匹配度高。",
+      "Multiple matching listings from the same supplier.": "同一供应商有多个相关 listing。",
+      "Listed price appears competitive against the target.": "标价相对目标价格有竞争力。",
+      "MOQ appears suitable for the preference.": "MOQ 符合当前偏好。",
+      "Supplier has a platform supplier page suitable for export inquiry.": "供应商页面适合发起出口询盘。",
+      "Company wording suggests possible manufacturing capability; verify before relying on it.": "公司名称有制造能力信号，仍需核实。",
+      "Price unavailable; ask supplier for current quotation.": "价格不可用，请向供应商确认实时报价。",
+      "MOQ unavailable; confirm MOQ before shortlisting.": "MOQ 不可用，入选前需确认。",
+      "Use as a backup candidate after confirming price, MOQ, and supplier identity.": "可作为备选，需先确认价格、MOQ 和供应商身份。",
       "Factory signal found": "发现工厂信号",
       "Verified supplier profile": "供应商资料已验证",
       "Competitive price signal": "价格具备竞争力",

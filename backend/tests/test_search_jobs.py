@@ -141,8 +141,36 @@ def test_platform_search_keywords_use_english_for_made_in_china_and_chinese_for_
     )
 
     assert search_jobs._platform_search_keywords(job) == {
-        "Made-in-China": "home coffee machine",
+        "Made-in-China": "home coffee machine manufacturer",
         "1688": "台式咖啡机",
+    }
+
+
+def test_platform_search_keywords_prioritize_finished_goods_for_broad_personal_care_category():
+    from app.routes import search_jobs
+
+    job = SearchJob(
+        job_id="job_test",
+        product_keyword="日化洗护用品",
+        target_price=None,
+        moq_preference=None,
+        supplier_preference=SupplierPreference.FACTORY_PREFERRED,
+        status=SearchJobStatus.COMPLETED,
+        progress=SearchProgress(stage="completed", message="completed"),
+        keyword_expansion=KeywordExpansion(
+            english_keywords=["daily chemical products"],
+            chinese_keywords=["日化洗护用品"],
+            variation_keywords=[],
+            confidence=0.7,
+            source="deterministic_v1",
+        ),
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+
+    assert search_jobs._platform_search_keywords(job) == {
+        "Made-in-China": "private label personal care products manufacturer",
+        "1688": "洗护用品 成品 OEM",
     }
 
 
@@ -289,7 +317,7 @@ def test_get_unique_suppliers_returns_platform_specific_top_five(monkeypatch):
     diagnostics = response.json()["platform_diagnostics"]
     assert diagnostics[0] == {
         "platform": "Made-in-China",
-        "searched_keyword": "handheld fan",
+        "searched_keyword": "handheld fan manufacturer",
         "raw_listing_count": 6,
         "unique_supplier_count": 5,
         "failure": None,
