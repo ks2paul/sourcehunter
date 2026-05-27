@@ -201,7 +201,7 @@ def _dict_value(data: dict[str, Any], *keys: str) -> dict[str, Any] | None:
 
 
 def _company_name(item: dict[str, Any], seller: dict[str, Any], nested_sources: list[dict[str, Any]]) -> str | None:
-    company_keys = (
+    top_level_company_keys = (
         "sellerName",
         "seller_name",
         "shopName",
@@ -223,13 +223,16 @@ def _company_name(item: dict[str, Any], seller: dict[str, Any], nested_sources: 
         "seller_nick",
         "storeName",
         "store_name",
+    )
+    supplier_node_company_keys = (
+        *top_level_company_keys,
         "title",
         "name",
     )
     return (
-        _string_value(item, *company_keys)
-        or _string_value(seller, *company_keys)
-        or _first_company_string_from_dicts(nested_sources, *company_keys)
+        _string_value(item, *top_level_company_keys)
+        or _string_value(seller, *supplier_node_company_keys)
+        or _first_company_string_from_dicts(nested_sources, *supplier_node_company_keys)
     )
 
 

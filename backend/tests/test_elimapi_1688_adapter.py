@@ -120,3 +120,19 @@ def test_elimapi_1688_uses_nested_chinese_shop_name_when_english_name_is_missing
     assert listing.raw_supplier_id == "shop-456"
     assert listing.supplier_url == "https://shop456.1688.com/"
     assert listing.raw_supplier_type == "factory"
+
+
+def test_elimapi_1688_does_not_use_product_title_as_company_name():
+    listing = Elimapi1688Adapter.build_listing(
+        {
+            "id": "789",
+            "title": "洗发水沐浴露套装",
+            "url": "https://detail.1688.com/offer/789.html",
+            "shop_id": "shop-789",
+            "price": "8.80",
+        }
+    )
+
+    assert listing is not None
+    assert listing.raw_product_name == "洗发水沐浴露套装"
+    assert listing.raw_company_name is None
