@@ -201,11 +201,23 @@ def _score_supplier(
     moq_preference: int | None,
     market_median_price: float | None,
 ) -> dict[str, int]:
+    platform = _primary_platform(listings)
+    if platform == "1688":
+        return {
+            "category_specialization": min(10, len(listings) * 4),
+            "factory_likelihood": _factory_likelihood_score(company_name, listings, max_score=20),
+            "price_competitiveness": _price_score(listings, target_price, market_median_price, max_score=20),
+            "moq_suitability": _moq_score(listings, moq_preference, max_score=15),
+            "supplier_identity": _supplier_identity_score(listings),
+            "business_maturity": 0,
+            "product_match_quality": _product_match_score(listings, product_keyword),
+        }
+
     return {
-        "category_specialization": min(15, len(listings) * 5),
-        "factory_likelihood": _factory_likelihood_score(company_name, listings),
-        "price_competitiveness": _price_score(listings, target_price, market_median_price),
-        "moq_suitability": _moq_score(listings, moq_preference),
+        "category_specialization": min(10, len(listings) * 4),
+        "factory_likelihood": _factory_likelihood_score(company_name, listings, max_score=20),
+        "price_competitiveness": _price_score(listings, target_price, market_median_price, max_score=15),
+        "moq_suitability": _moq_score(listings, moq_preference, max_score=10),
         "export_readiness": _export_readiness_score(listings, supplier_url),
         "business_maturity": _business_maturity_score(listings),
         "product_match_quality": _product_match_score(listings, product_keyword),
@@ -246,7 +258,12 @@ def _product_match_score(listings: list[RawListing], product_keyword: str | None
     return round(best_ratio * 25)
 
 
-def _price_score(listings: list[RawListing], target_price: float | None, market_median_price: float | None = None) -> int:
+def _price_score(
+    listings: list[RawListing],
+    target_price: float | None,
+    market_median_price: float | None = None,
+    max_score: int = 20,
+) -> int:
     prices = [_parse_lowest_number(listing.raw_price) for listing in listings]
     known_prices = [price for price in prices if price is not None]
     if not known_prices:
@@ -255,34 +272,34 @@ def _price_score(listings: list[RawListing], target_price: float | None, market_
     lowest_price = min(known_prices)
     if target_price:
         if lowest_price <= target_price:
-            return 20
+            return max_score
         if lowest_price <= target_price * 1.25:
-            return 14
+            return round(max_score * 0.7)
         if lowest_price <= target_price * 1.5:
-            return 8
-        return 3
+            return round(max_score * 0.4)
+        return max(1, round(max_score * 0.15))
 
     if market_median_price:
         if lowest_price < market_median_price * 0.5:
-            return 8
+            return round(max_score * 0.4)
         if lowest_price <= market_median_price:
-            return 18
+            return round(max_score * 0.9)
         if lowest_price <= market_median_price * 1.25:
-            return 14
+            return round(max_score * 0.7)
         if lowest_price <= market_median_price * 1.5:
-            return 10
-        return 5
+            return round(max_score * 0.5)
+        return round(max_score * 0.25)
 
     if lowest_price <= 1:
-        return 20
+        return max_score
     if lowest_price <= 3:
-        return 16
+        return round(max_score * 0.8)
     if lowest_price <= 6:
-        return 10
-    return 5
+        return round(max_score * 0.5)
+    return round(max_score * 0.25)
 
 
-def _moq_score(listings: list[RawListing], moq_preference: int | None) -> int:
+def _moq_score(listings: list[RawListing], moq_preference: int | None, max_score: int = 15) -> int:
     moqs = [_parse_lowest_number(listing.raw_moq) for listing in listings]
     known_moqs = [moq for moq in moqs if moq is not None]
     if not known_moqs:
@@ -291,31 +308,31 @@ def _moq_score(listings: list[RawListing], moq_preference: int | None) -> int:
     lowest_moq = min(known_moqs)
     if moq_preference:
         if lowest_moq <= moq_preference:
-            return 15
+            return max_score
         if lowest_moq <= moq_preference * 2:
-            return 10
+            return round(max_score * 0.67)
         if lowest_moq <= moq_preference * 5:
-            return 5
+            return round(max_score * 0.33)
         return 1
 
     if lowest_moq <= 50:
-        return 15
+        return max_score
     if lowest_moq <= 500:
-        return 10
+        return round(max_score * 0.67)
     if lowest_moq <= 1000:
-        return 5
+        return round(max_score * 0.33)
     return 2
 
 
 def _export_readiness_score(listings: list[RawListing], supplier_url: str | None) -> int:
     score = 0
     if supplier_url:
-        score += 4
+        score += 6
     if any(listing.platform == "Made-in-China" for listing in listings):
-        score += 4
+        score += 6
     if any(listing.raw_contact_text for listing in listings):
-        score += 2
-    return min(10, score)
+        score += 3
+    return min(15, score)
 
 
 def _business_maturity_score(listings: list[RawListing]) -> int:
@@ -325,29 +342,52 @@ def _business_maturity_score(listings: list[RawListing]) -> int:
         return 0
     oldest = max(known_years)
     if oldest >= 10:
-        return 10
+        return 5
     if oldest >= 5:
-        return 7
-    if oldest >= 2:
         return 4
-    return 2
+    if oldest >= 2:
+        return 2
+    return 1
 
 
-def _factory_likelihood_score(company_name: str | None, listings: list[RawListing] | None = None) -> int:
+def _factory_likelihood_score(
+    company_name: str | None,
+    listings: list[RawListing] | None = None,
+    max_score: int = 20,
+) -> int:
     if listings and any((listing.raw_supplier_type or "").lower() == "factory" for listing in listings):
-        return 10
+        return max_score
     if listings and _has_1688_factory_signal(listings):
-        return 7
+        return round(max_score * 0.7)
     normalized = _normalize_text(company_name) or ""
     if not normalized:
         return 0
     manufacturer_terms = ("factory", "manufacturing", "industrial", "electronics", "technology", "appliance")
     trader_terms = ("trading", "trade", "import", "export")
     if any(term in normalized for term in trader_terms):
-        return 2
+        return round(max_score * 0.2)
     if any(term in normalized for term in manufacturer_terms):
-        return 5
-    return 1
+        return round(max_score * 0.6)
+    return round(max_score * 0.1)
+
+
+def _supplier_identity_score(listings: list[RawListing]) -> int:
+    if any(listing.raw_company_name for listing in listings):
+        return 10
+    if any(listing.supplier_url for listing in listings):
+        return 8
+    if any(listing.raw_supplier_id for listing in listings):
+        return 6
+    return 0
+
+
+def _primary_platform(listings: list[RawListing]) -> str:
+    platforms = {listing.platform for listing in listings}
+    if platforms == {"1688"}:
+        return "1688"
+    if platforms == {"Made-in-China"}:
+        return "Made-in-China"
+    return "Mixed"
 
 
 def _supplier_type(listings: list[RawListing]) -> str:
@@ -405,10 +445,15 @@ def _recommendation_reasons(
         reasons.append("Listed price appears competitive against the target.")
     if score_breakdown["moq_suitability"] >= 10:
         reasons.append("MOQ appears suitable for the preference.")
-    if score_breakdown["export_readiness"] >= 8:
+    if score_breakdown.get("export_readiness", 0) >= 12:
         reasons.append("Supplier has a platform supplier page suitable for export inquiry.")
-    if score_breakdown["factory_likelihood"] >= 5:
-        reasons.append("Company wording suggests possible manufacturing capability; verify before relying on it.")
+    if score_breakdown["factory_likelihood"] >= 14:
+        if _has_1688_factory_signal(listings):
+            reasons.append("1688 title contains factory or OEM signal; verify before relying on it.")
+        else:
+            reasons.append("Supplier profile shows strong factory signal.")
+    if score_breakdown.get("supplier_identity", 0) >= 6:
+        reasons.append("1688 supplier identity is available for deduplication.")
     if _price_score(listings, target_price, market_median_price) == 0:
         reasons.append("Price unavailable; ask supplier for current quotation.")
     if _moq_score(listings, moq_preference) == 0:

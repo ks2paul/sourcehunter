@@ -148,7 +148,7 @@ def test_deduplicate_suppliers_ranks_by_score_before_listing_count():
 
     assert suppliers[0].company_name == "Best Match Supplier"
     assert suppliers[0].supplier_score > suppliers[1].supplier_score
-    assert suppliers[0].recommended_action == "Request quotation immediately"
+    assert suppliers[0].recommended_action == "Request samples"
     assert "Strong product keyword match." in suppliers[0].recommendation_reasons
 
 
@@ -267,7 +267,7 @@ def test_deduplicate_suppliers_boosts_unverified_1688_factory_title_signal():
 
     assert suppliers[0].products[0].supplier_id == "seller-factory-signal"
     assert suppliers[0].supplier_type == "Factory Signal (Unverified)"
-    assert suppliers[0].score_breakdown["factory_likelihood"] == 7
+    assert suppliers[0].score_breakdown["factory_likelihood"] == 14
 
 
 def test_deduplicate_suppliers_flags_product_mismatch():

@@ -66,6 +66,7 @@ const copy = {
     risk: "风险",
     tier: "等级",
     score: "评分",
+    scoreDetails: "评分明细",
     listing: "条 listing",
     listings: "条 listings",
     supplier: "供应商",
@@ -128,6 +129,7 @@ const copy = {
     risk: "Risk",
     tier: "Tier",
     score: "Score",
+    scoreDetails: "Score details",
     listing: "listing",
     listings: "listings",
     supplier: "Supplier",
@@ -680,6 +682,17 @@ function SupplierCard({
       <p className="mt-1 text-sm text-slate-600">
         {labels.price}: {leadProduct?.price ?? labels.priceUnavailable} · MOQ: {leadProduct?.moq ?? labels.moqUnavailable}
       </p>
+      <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-2">
+        <div className="text-xs font-medium text-slate-600">{labels.scoreDetails}</div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+          {scoreBreakdownEntries(supplier.score_breakdown, language).map((item) => (
+            <div key={item.key} className="rounded border border-slate-200 bg-white px-2 py-1">
+              <div className="text-slate-500">{item.label}</div>
+              <div className="mt-0.5 font-semibold text-slate-900">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
       {leadProduct?.supplier_id ? (
         <p className="mt-1 break-all text-xs text-slate-500">
           {labels.supplierId}: {leadProduct.supplier_id}
@@ -871,6 +884,36 @@ function translateRecommendedAction(action: string, language: Language): string 
   );
 }
 
+function scoreBreakdownEntries(scoreBreakdown: Record<string, number>, language: Language) {
+  const labels: Record<string, Record<Language, string>> = {
+    product_match_quality: { zh: "产品匹配", en: "Product Match" },
+    factory_likelihood: { zh: "工厂可信度", en: "Factory Signal" },
+    price_competitiveness: { zh: "价格", en: "Price" },
+    moq_suitability: { zh: "MOQ", en: "MOQ" },
+    export_readiness: { zh: "出口/询盘", en: "Export Ready" },
+    supplier_identity: { zh: "店铺身份", en: "Supplier ID" },
+    category_specialization: { zh: "类目专注", en: "Specialization" },
+    business_maturity: { zh: "经营年限", en: "Maturity" },
+  };
+  const order = [
+    "product_match_quality",
+    "factory_likelihood",
+    "price_competitiveness",
+    "moq_suitability",
+    "export_readiness",
+    "supplier_identity",
+    "category_specialization",
+    "business_maturity",
+  ];
+  return order
+    .filter((key) => key in scoreBreakdown)
+    .map((key) => ({
+      key,
+      label: labels[key]?.[language] ?? key,
+      value: scoreBreakdown[key],
+    }));
+}
+
 function translateRiskFlag(flag: string, language: Language): string {
   if (language === "en") {
     return flag;
@@ -905,6 +948,9 @@ function translateReason(reason: string, language: Language): string {
       "MOQ appears suitable for the preference.": "MOQ 符合当前偏好。",
       "Supplier has a platform supplier page suitable for export inquiry.": "供应商页面适合发起出口询盘。",
       "Company wording suggests possible manufacturing capability; verify before relying on it.": "公司名称有制造能力信号，仍需核实。",
+      "Supplier profile shows strong factory signal.": "供应商资料有较强工厂信号。",
+      "1688 title contains factory or OEM signal; verify before relying on it.": "1688 标题包含工厂/OEM 信号，仍需核实。",
+      "1688 supplier identity is available for deduplication.": "1688 店铺身份可用于去重。",
       "Price unavailable; ask supplier for current quotation.": "价格不可用，请向供应商确认实时报价。",
       "MOQ unavailable; confirm MOQ before shortlisting.": "MOQ 不可用，入选前需确认。",
       "Use as a backup candidate after confirming price, MOQ, and supplier identity.": "可作为备选，需先确认价格、MOQ 和供应商身份。",
