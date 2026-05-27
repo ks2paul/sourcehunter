@@ -11,6 +11,7 @@ export type KeywordExpansion = {
 export type SearchJob = {
   job_id: string;
   product_keyword: string;
+  product_features: string | null;
   target_price: number | null;
   moq_preference: number | null;
   supplier_preference: SupplierPreference;
@@ -27,6 +28,7 @@ export type SearchJob = {
 
 export type CreateSearchJobPayload = {
   product_keyword: string;
+  product_features: string | null;
   target_price: number | null;
   moq_preference: number | null;
   supplier_preference: SupplierPreference;

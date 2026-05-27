@@ -18,6 +18,8 @@ const copy = {
     subtitle: "AI 供应商发现与采购判断工具",
     searchInput: "搜索输入",
     productKeyword: "产品关键词",
+    productFeatures: "产品特征",
+    productFeaturesPlaceholder: "可选：硅胶、彩色、磁吸、透明、防摔...",
     targetPrice: "目标价格",
     moqPreference: "MOQ 偏好",
     supplierPreference: "供应商偏好",
@@ -80,6 +82,8 @@ const copy = {
     subtitle: "AI-powered supplier discovery and procurement intelligence",
     searchInput: "Search input",
     productKeyword: "Product keyword",
+    productFeatures: "Product features",
+    productFeaturesPlaceholder: "Optional: silicone, colorful, magsafe, transparent...",
     targetPrice: "Target price",
     moqPreference: "MOQ preference",
     supplierPreference: "Supplier preference",
@@ -146,6 +150,7 @@ type UiCopy = (typeof copy)[Language];
 export default function HomePage() {
   const [language, setLanguage] = useState<Language>("zh");
   const [productKeyword, setProductKeyword] = useState("handheld fan");
+  const [productFeatures, setProductFeatures] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [moqPreference, setMoqPreference] = useState("");
   const [supplierPreference, setSupplierPreference] = useState<SupplierPreference>("Factory Preferred");
@@ -188,6 +193,7 @@ export default function HomePage() {
     try {
       const createdJob = await createSearchJob({
         product_keyword: productKeyword,
+        product_features: productFeatures.trim() ? productFeatures.trim() : null,
         target_price: targetPrice ? Number(targetPrice) : null,
         moq_preference: moqPreference ? Number(moqPreference) : null,
         supplier_preference: supplierPreference,
@@ -293,6 +299,17 @@ export default function HomePage() {
               onChange={(event) => setProductKeyword(event.target.value)}
               className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
               required
+            />
+
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="product_features">
+              {t.productFeatures}
+            </label>
+            <input
+              id="product_features"
+              value={productFeatures}
+              onChange={(event) => setProductFeatures(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              placeholder={t.productFeaturesPlaceholder}
             />
 
             <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="target_price">
@@ -892,6 +909,7 @@ function scoreBreakdownEntries(scoreBreakdown: Record<string, number>, language:
     moq_suitability: { zh: "MOQ", en: "MOQ" },
     export_readiness: { zh: "出口/询盘", en: "Export Ready" },
     supplier_identity: { zh: "店铺身份", en: "Supplier ID" },
+    feature_match: { zh: "特征匹配", en: "Feature Match" },
     category_specialization: { zh: "类目专注", en: "Specialization" },
     business_maturity: { zh: "经营年限", en: "Maturity" },
   };
@@ -902,6 +920,7 @@ function scoreBreakdownEntries(scoreBreakdown: Record<string, number>, language:
     "moq_suitability",
     "export_readiness",
     "supplier_identity",
+    "feature_match",
     "category_specialization",
     "business_maturity",
   ];
@@ -953,6 +972,7 @@ function translateReason(reason: string, language: Language): string {
       "Supplier profile shows strong factory signal.": "供应商资料有较强工厂信号。",
       "1688 title contains factory or OEM signal; verify before relying on it.": "1688 标题包含工厂/OEM 信号，仍需核实。",
       "1688 supplier identity is available for deduplication.": "1688 店铺身份可用于去重。",
+      "Requested product features appear in the listing title.": "标题包含你填写的产品特征。",
       "Price unavailable; ask supplier for current quotation.": "价格不可用，请向供应商确认实时报价。",
       "MOQ unavailable; confirm MOQ before shortlisting.": "MOQ 不可用，入选前需确认。",
       "Use as a backup candidate after confirming price, MOQ, and supplier identity.": "可作为备选，需先确认价格、MOQ 和供应商身份。",

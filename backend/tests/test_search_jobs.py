@@ -11,6 +11,7 @@ async def test_search_job_repository_creates_completed_job():
     repository = SearchJobRepository()
     request = SearchJobCreate(
         product_keyword="handheld fan",
+        product_features="magsafe silicone",
         target_price=3.5,
         moq_preference=500,
         supplier_preference=SupplierPreference.FACTORY_PREFERRED,
@@ -22,6 +23,7 @@ async def test_search_job_repository_creates_completed_job():
     assert job.job_id.startswith("job_")
     assert job.status == "completed"
     assert job.product_keyword == "handheld fan"
+    assert job.product_features == "magsafe silicone"
     assert job.keyword_expansion.english_keywords[0] == "handheld fan"
     assert "手持风扇" in job.keyword_expansion.chinese_keywords
 
@@ -94,6 +96,7 @@ def test_create_search_job_api_returns_job():
     payload = response.json()
     assert payload["job_id"].startswith("job_")
     assert payload["status"] == "completed"
+    assert payload["product_features"] is None
     assert payload["keyword_expansion"]["english_keywords"][0] == "handheld fan"
 
 
@@ -197,6 +200,35 @@ def test_platform_search_keywords_do_not_add_1688_factory_terms_when_supplier_pr
     )
 
     assert search_jobs._platform_search_keywords(job)["1688"] == "手持风扇"
+
+
+def test_platform_search_keywords_append_optional_product_features():
+    from app.routes import search_jobs
+
+    job = SearchJob(
+        job_id="job_test",
+        product_keyword="iphone 17 pro max phone case",
+        product_features="silicone colorful magsafe",
+        target_price=None,
+        moq_preference=None,
+        supplier_preference=SupplierPreference.FACTORY_PREFERRED,
+        status=SearchJobStatus.COMPLETED,
+        progress=SearchProgress(stage="completed", message="completed"),
+        keyword_expansion=KeywordExpansion(
+            english_keywords=["iphone 17 pro max phone case"],
+            chinese_keywords=["苹果17 pro max 手机壳"],
+            variation_keywords=[],
+            confidence=0.9,
+            source="deterministic_v1",
+        ),
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+
+    platform_keywords = search_jobs._platform_search_keywords(job)
+
+    assert platform_keywords["Made-in-China"] == "iphone 17 pro max phone case manufacturer silicone colorful magsafe"
+    assert platform_keywords["1688"] == "苹果17 pro max 手机壳 厂家 工厂 源头厂家 OEM silicone colorful magsafe"
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):

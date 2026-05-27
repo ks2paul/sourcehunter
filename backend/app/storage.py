@@ -20,6 +20,7 @@ class SearchJobRepository:
         job = SearchJob(
             job_id=job_id,
             product_keyword=request.product_keyword.strip(),
+            product_features=request.product_features.strip() if request.product_features else None,
             target_price=request.target_price,
             moq_preference=request.moq_preference,
             supplier_preference=request.supplier_preference,

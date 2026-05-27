@@ -373,6 +373,41 @@ def test_deduplicate_suppliers_filters_phone_case_equipment_for_finished_case_re
     assert suppliers[0].company_name == "Case Supplier"
 
 
+def test_deduplicate_suppliers_scores_optional_product_feature_match():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://silicone.example/product.html",
+            supplier_url="https://silicone.en.made-in-china.com/",
+            raw_product_name="Colorful Silicone Magsafe Phone Case for iPhone 17 Pro Max",
+            raw_company_name="Feature Match Supplier",
+            raw_price="US$1.20",
+            raw_moq="50 Pieces (MOQ)",
+        ),
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://plain.example/product.html",
+            supplier_url="https://plain.en.made-in-china.com/",
+            raw_product_name="Clear TPU Phone Case for iPhone 17 Pro Max",
+            raw_company_name="Plain Supplier",
+            raw_price="US$1.20",
+            raw_moq="50 Pieces (MOQ)",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(
+        listings,
+        product_keyword="iphone 17 pro max phone case",
+        product_features="silicone colorful magsafe",
+    )
+
+    assert suppliers[0].company_name == "Feature Match Supplier"
+    assert suppliers[0].score_breakdown["feature_match"] == 10
+    assert "Requested product features appear in the listing title." in suppliers[0].recommendation_reasons
+
+
 def test_deduplicate_suppliers_flags_abnormally_low_price_against_market_median():
     listings = [
         RawListing(

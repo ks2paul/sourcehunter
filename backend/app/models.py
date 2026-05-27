@@ -21,6 +21,7 @@ class SearchJobStatus(StrEnum):
 
 class SearchJobCreate(BaseModel):
     product_keyword: str = Field(min_length=1, max_length=120)
+    product_features: str | None = Field(default=None, max_length=240)
     target_price: float | None = Field(default=None, gt=0)
     moq_preference: int | None = Field(default=None, gt=0)
     supplier_preference: SupplierPreference = SupplierPreference.FACTORY_PREFERRED
@@ -43,6 +44,7 @@ class SearchProgress(BaseModel):
 class SearchJob(BaseModel):
     job_id: str
     product_keyword: str
+    product_features: str | None = None
     target_price: float | None
     moq_preference: int | None
     supplier_preference: SupplierPreference

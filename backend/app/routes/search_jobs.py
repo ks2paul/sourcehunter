@@ -10,7 +10,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 13
+SUPPLIER_CACHE_VERSION = 14
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -63,9 +63,11 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
 
     scrape_result = await _search_for_job(job)
     platform_keywords = _platform_search_keywords(job)
+    platform_match_keywords = _platform_match_keywords(job)
     suppliers = deduplicate_suppliers(
         scrape_result.listings,
         product_keyword=job.product_keyword,
+        product_features=job.product_features,
         target_price=job.target_price,
         moq_preference=job.moq_preference,
         supplier_preference=job.supplier_preference,
@@ -73,7 +75,8 @@ async def get_unique_suppliers(job_id: str) -> SuppliersResponse:
     platform_supplier_groups = _platform_supplier_groups(
         listings=scrape_result.listings,
         product_keyword=job.product_keyword,
-        platform_keywords=platform_keywords,
+        product_features=job.product_features,
+        platform_keywords=platform_match_keywords,
         target_price=job.target_price,
         moq_preference=job.moq_preference,
         supplier_preference=job.supplier_preference,
@@ -110,6 +113,13 @@ async def _search_for_job(job: SearchJob):
 
 def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
     return {
+        platform: _append_features(keyword, job.product_features)
+        for platform, keyword in _platform_match_keywords(job).items()
+    }
+
+
+def _platform_match_keywords(job: SearchJob) -> dict[str, str]:
+    return {
         "Made-in-China": made_in_china_finished_product_keyword(
             job.product_keyword,
             job.keyword_expansion.english_keywords,
@@ -122,13 +132,20 @@ def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
     }
 
 
-def _first_keyword(keywords: list[str], fallback: str) -> str:
-    return next((keyword for keyword in keywords if keyword.strip()), fallback)
+def _append_features(keyword: str, product_features: str | None) -> str:
+    features = " ".join((product_features or "").split())
+    if not features:
+        return keyword
+    normalized_keyword = keyword.lower()
+    if features.lower() in normalized_keyword:
+        return keyword
+    return f"{keyword} {features}"
 
 
 def _platform_supplier_groups(
     listings,
     product_keyword: str,
+    product_features: str | None,
     platform_keywords: dict[str, str],
     target_price: float | None,
     moq_preference: int | None,
@@ -141,6 +158,7 @@ def _platform_supplier_groups(
             platform_listings,
             limit=5,
             product_keyword=platform_keywords.get(platform, product_keyword),
+            product_features=product_features,
             target_price=target_price,
             moq_preference=moq_preference,
             supplier_preference=supplier_preference,

@@ -39,6 +39,7 @@ def deduplicate_suppliers(
     listings: list[RawListing],
     limit: int = 5,
     product_keyword: str | None = None,
+    product_features: str | None = None,
     target_price: float | None = None,
     moq_preference: int | None = None,
     supplier_preference: str | None = None,
@@ -57,6 +58,7 @@ def deduplicate_suppliers(
             identity=identity,
             listings=group,
             product_keyword=product_keyword,
+            product_features=product_features,
             target_price=target_price,
             moq_preference=moq_preference,
             market_median_price=market_median_price,
@@ -94,6 +96,7 @@ def _build_supplier(
     identity: str,
     listings: list[RawListing],
     product_keyword: str | None,
+    product_features: str | None,
     target_price: float | None,
     moq_preference: int | None,
     market_median_price: float | None,
@@ -106,6 +109,7 @@ def _build_supplier(
         company_name=company_name,
         supplier_url=supplier_url,
         product_keyword=product_keyword,
+        product_features=product_features,
         target_price=target_price,
         moq_preference=moq_preference,
         market_median_price=market_median_price,
@@ -198,6 +202,7 @@ def _score_supplier(
     company_name: str | None,
     supplier_url: str | None,
     product_keyword: str | None,
+    product_features: str | None,
     target_price: float | None,
     moq_preference: int | None,
     market_median_price: float | None,
@@ -212,6 +217,7 @@ def _score_supplier(
             "supplier_identity": _supplier_identity_score(listings),
             "business_maturity": 0,
             "product_match_quality": _product_match_score(listings, product_keyword),
+            "feature_match": _feature_match_score(listings, product_features),
         }
 
     return {
@@ -222,6 +228,7 @@ def _score_supplier(
         "export_readiness": _export_readiness_score(listings, supplier_url),
         "business_maturity": _business_maturity_score(listings),
         "product_match_quality": _product_match_score(listings, product_keyword),
+        "feature_match": _feature_match_score(listings, product_features),
     }
 
 
@@ -261,6 +268,34 @@ def _product_match_score(listings: list[RawListing], product_keyword: str | None
         best_ratio = max(best_ratio, matched / len(tokens))
 
     return round(best_ratio * 25)
+
+
+def _feature_match_score(listings: list[RawListing], product_features: str | None) -> int:
+    tokens = _feature_tokens(product_features)
+    if not tokens:
+        return 0
+
+    best_ratio = 0.0
+    for listing in listings:
+        product_name = (listing.raw_product_name or "").lower()
+        compact_product_name = re.sub(r"\s+", "", product_name)
+        if not product_name:
+            continue
+        matched = sum(1 for token in tokens if token in product_name or token in compact_product_name)
+        best_ratio = max(best_ratio, matched / len(tokens))
+    return round(best_ratio * 10)
+
+
+def _feature_tokens(product_features: str | None) -> list[str]:
+    if not product_features:
+        return []
+    normalized = product_features.lower()
+    raw_tokens = re.split(r"[,;/，、\s]+", normalized)
+    tokens = [token.strip() for token in raw_tokens if token.strip()]
+    compact = re.sub(r"[,;/，、\s]+", "", normalized)
+    if compact and not tokens:
+        tokens.append(compact)
+    return tokens[:8]
 
 
 def _price_score(
@@ -444,6 +479,8 @@ def _recommendation_reasons(
     reasons: list[str] = []
     if product_keyword and score_breakdown["product_match_quality"] >= 20:
         reasons.append("Strong product keyword match.")
+    if score_breakdown.get("feature_match", 0) >= 7:
+        reasons.append("Requested product features appear in the listing title.")
     if score_breakdown["category_specialization"] >= 10:
         reasons.append("Multiple matching listings from the same supplier.")
     if score_breakdown["price_competitiveness"] >= 14:
