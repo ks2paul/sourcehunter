@@ -90,19 +90,50 @@ class Elimapi1688Adapter:
     def build_listing(item: dict[str, Any], source_url: str = "https://openapi.elim.asia/v1/products/search") -> RawListing | None:
         product_id = _string_value(item, "id", "offerId", "offer_id", "productId", "product_id")
         product_url = _string_value(item, "url", "link", "productUrl", "product_url", "detailUrl", "detail_url")
+        nested_sources = _nested_dicts(item)
+        product_url = product_url or _first_string_from_dicts(
+            nested_sources,
+            "url",
+            "link",
+            "productUrl",
+            "product_url",
+            "detailUrl",
+            "detail_url",
+        )
         if product_url is None and product_id:
             product_url = f"https://detail.1688.com/offer/{product_id}.html"
 
-        seller = _dict_value(item, "seller", "shop", "supplier") or {}
+        seller = _dict_value(item, "seller", "shop", "supplier", "sellerInfo", "shopInfo", "supplierInfo") or {}
         supplier_url = _string_value(item, "sellerUrl", "seller_url", "shopUrl", "shop_url")
         supplier_url = supplier_url or _string_value(seller, "url", "shopUrl", "shop_url", "sellerUrl", "seller_url")
+        supplier_url = supplier_url or _first_string_from_dicts(
+            nested_sources,
+            "shopUrl",
+            "shop_url",
+            "sellerUrl",
+            "seller_url",
+            "supplierUrl",
+            "supplier_url",
+            "storeUrl",
+            "store_url",
+        )
         supplier_id = _string_value(item, "shop_id", "shopId", "seller_id", "sellerId", "supplier_id", "supplierId")
         supplier_id = supplier_id or _string_value(seller, "id", "shop_id", "shopId", "seller_id", "sellerId")
+        supplier_id = supplier_id or _first_supplier_string_from_dicts(
+            nested_sources,
+            "id",
+            "shop_id",
+            "shopId",
+            "seller_id",
+            "sellerId",
+            "supplier_id",
+            "supplierId",
+        )
 
         product_name = _string_value(item, "titleEn", "title_en", "nameEn", "name_en")
         product_name = product_name or _string_value(item, "title", "name", "subject")
-        company_name = _string_value(item, "sellerName", "seller_name", "shopName", "shop_name", "companyName", "company_name")
-        company_name = company_name or _string_value(seller, "name", "title", "companyName", "company_name")
+        product_name = product_name or _first_string_from_dicts(nested_sources, "titleEn", "title_en", "nameEn", "name_en", "title", "name", "subject")
+        company_name = _company_name(item, seller, nested_sources)
 
         if not product_url or not product_name or not (supplier_url or supplier_id or company_name):
             return None
@@ -117,7 +148,9 @@ class Elimapi1688Adapter:
             raw_company_name=company_name,
             raw_price=_format_price(_first_value(item, "promotion_price", "promotionPrice", "price", "retail_price", "dropship_price")),
             raw_moq=_format_moq(_first_value(item, "moq", "minOrderQuantity", "min_order_quantity", "minimumOrderQuantity")),
-            raw_supplier_type=_string_value(item, "seller_type", "sellerType") or _string_value(seller, "seller_type", "sellerType"),
+            raw_supplier_type=_string_value(item, "seller_type", "sellerType")
+            or _string_value(seller, "seller_type", "sellerType")
+            or _first_supplier_string_from_dicts(nested_sources, "seller_type", "sellerType"),
         )
 
 
@@ -165,6 +198,128 @@ def _string_value(data: dict[str, Any], *keys: str) -> str | None:
 def _dict_value(data: dict[str, Any], *keys: str) -> dict[str, Any] | None:
     value = _first_value(data, *keys)
     return value if isinstance(value, dict) else None
+
+
+def _company_name(item: dict[str, Any], seller: dict[str, Any], nested_sources: list[dict[str, Any]]) -> str | None:
+    company_keys = (
+        "sellerName",
+        "seller_name",
+        "shopName",
+        "shop_name",
+        "companyName",
+        "company_name",
+        "companyNameCn",
+        "company_name_cn",
+        "company",
+        "corpName",
+        "corp_name",
+        "supplierName",
+        "supplier_name",
+        "memberName",
+        "member_name",
+        "nick",
+        "nickName",
+        "sellerNick",
+        "seller_nick",
+        "storeName",
+        "store_name",
+        "title",
+        "name",
+    )
+    return (
+        _string_value(item, *company_keys)
+        or _string_value(seller, *company_keys)
+        or _first_company_string_from_dicts(nested_sources, *company_keys)
+    )
+
+
+def _first_company_string_from_dicts(dicts: list[dict[str, Any]], *keys: str) -> str | None:
+    for data in dicts:
+        if _looks_like_product_node(data):
+            continue
+        value = _string_value(data, *keys)
+        if value:
+            return value
+    return None
+
+
+def _first_supplier_string_from_dicts(dicts: list[dict[str, Any]], *keys: str) -> str | None:
+    for data in dicts:
+        if _looks_like_product_node(data):
+            continue
+        value = _string_value(data, *keys)
+        if value:
+            return value
+    return None
+
+
+def _looks_like_product_node(data: dict[str, Any]) -> bool:
+    has_product_fields = any(key in data for key in ("title", "subject", "productUrl", "product_url", "detailUrl", "detail_url"))
+    has_supplier_fields = any(
+        key in data
+        for key in (
+            "sellerName",
+            "seller_name",
+            "shopName",
+            "shop_name",
+            "companyName",
+            "company_name",
+            "supplierName",
+            "supplier_name",
+            "memberName",
+            "member_name",
+            "corpName",
+            "corp_name",
+            "storeName",
+            "store_name",
+            "nick",
+            "nickName",
+        )
+    )
+    return has_product_fields and not has_supplier_fields
+
+
+def _first_string_from_dicts(dicts: list[dict[str, Any]], *keys: str) -> str | None:
+    for data in dicts:
+        value = _string_value(data, *keys)
+        if value:
+            return value
+    return None
+
+
+def _nested_dicts(data: dict[str, Any]) -> list[dict[str, Any]]:
+    sources: list[dict[str, Any]] = []
+    visited: set[int] = set()
+
+    def visit(value: Any) -> None:
+        if not isinstance(value, dict) or id(value) in visited:
+            return
+        visited.add(id(value))
+        sources.append(value)
+        for key in (
+            "data",
+            "result",
+            "item",
+            "offer",
+            "product",
+            "seller",
+            "shop",
+            "supplier",
+            "sellerInfo",
+            "shopInfo",
+            "supplierInfo",
+            "company",
+            "companyInfo",
+            "store",
+            "storeInfo",
+            "member",
+            "memberInfo",
+            "user",
+        ):
+            visit(value.get(key))
+
+    visit(data)
+    return sources
 
 
 def _format_price(value: Any) -> str | None:

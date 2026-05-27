@@ -94,3 +94,29 @@ def test_elimapi_verified_factory_allows_factory_only():
 
     assert len(suppliers) == 1
     assert suppliers[0].supplier_type == "Verified Factory"
+
+
+def test_elimapi_1688_uses_nested_chinese_shop_name_when_english_name_is_missing():
+    listing = Elimapi1688Adapter.build_listing(
+        {
+            "data": {
+                "offer": {
+                    "id": "456",
+                    "title": "洗发水沐浴露套装",
+                    "url": "https://detail.1688.com/offer/456.html",
+                },
+                "shopInfo": {
+                    "shopId": "shop-456",
+                    "shopName": "广州真实日化用品有限公司",
+                    "shopUrl": "https://shop456.1688.com/",
+                    "sellerType": "factory",
+                },
+            }
+        }
+    )
+
+    assert listing is not None
+    assert listing.raw_company_name == "广州真实日化用品有限公司"
+    assert listing.raw_supplier_id == "shop-456"
+    assert listing.supplier_url == "https://shop456.1688.com/"
+    assert listing.raw_supplier_type == "factory"
