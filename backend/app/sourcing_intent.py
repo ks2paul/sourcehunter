@@ -103,11 +103,19 @@ def made_in_china_finished_product_keyword(product_keyword: str, english_keyword
     return _with_made_in_china_intent(keyword)
 
 
-def china_1688_finished_product_keyword(product_keyword: str, chinese_keywords: list[str]) -> str:
+def china_1688_finished_product_keyword(
+    product_keyword: str,
+    chinese_keywords: list[str],
+    supplier_preference: str | None = None,
+) -> str:
     broad_expansion = broad_finished_product_expansion(product_keyword)
     if broad_expansion:
-        return str(broad_expansion["china_1688"])
-    return _first_keyword(chinese_keywords, product_keyword)
+        keyword = str(broad_expansion["china_1688"])
+    else:
+        keyword = _first_keyword(chinese_keywords, product_keyword)
+    if supplier_preference in ("Factory Preferred", "Factory Only"):
+        return _with_1688_factory_intent(keyword)
+    return keyword
 
 
 def looks_like_raw_material_result(product_name: str | None) -> bool:
@@ -124,6 +132,14 @@ def _with_made_in_china_intent(keyword: str) -> str:
     if any(term in normalized for term in MADE_IN_CHINA_INTENT_TERMS):
         return keyword.strip()
     return f"{keyword.strip()} manufacturer"
+
+
+def _with_1688_factory_intent(keyword: str) -> str:
+    normalized = _normalize_text(keyword)
+    factory_terms = ("厂家", "工厂", "源头厂家", "源头工厂", "生产厂家", "oem", "odm", "代工")
+    if any(term in normalized for term in factory_terms):
+        return keyword.strip()
+    return f"{keyword.strip()} 厂家 工厂 源头厂家 OEM"
 
 
 def _first_keyword(keywords: list[str], fallback: str) -> str:

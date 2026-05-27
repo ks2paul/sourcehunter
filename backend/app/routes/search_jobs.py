@@ -10,7 +10,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 10
+SUPPLIER_CACHE_VERSION = 11
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -117,6 +117,7 @@ def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
         "1688": china_1688_finished_product_keyword(
             job.product_keyword,
             job.keyword_expansion.chinese_keywords,
+            job.supplier_preference,
         ),
     }
 

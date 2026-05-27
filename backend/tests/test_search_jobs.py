@@ -142,7 +142,7 @@ def test_platform_search_keywords_use_english_for_made_in_china_and_chinese_for_
 
     assert search_jobs._platform_search_keywords(job) == {
         "Made-in-China": "home coffee machine manufacturer",
-        "1688": "台式咖啡机",
+        "1688": "台式咖啡机 厂家 工厂 源头厂家 OEM",
     }
 
 
@@ -172,6 +172,31 @@ def test_platform_search_keywords_prioritize_finished_goods_for_broad_personal_c
         "Made-in-China": "private label personal care products manufacturer",
         "1688": "洗护用品 成品 OEM",
     }
+
+
+def test_platform_search_keywords_do_not_add_1688_factory_terms_when_supplier_preference_is_any():
+    from app.routes import search_jobs
+
+    job = SearchJob(
+        job_id="job_test",
+        product_keyword="手持风扇",
+        target_price=None,
+        moq_preference=None,
+        supplier_preference=SupplierPreference.ANY_SUPPLIER,
+        status=SearchJobStatus.COMPLETED,
+        progress=SearchProgress(stage="completed", message="completed"),
+        keyword_expansion=KeywordExpansion(
+            english_keywords=["handheld fan"],
+            chinese_keywords=["手持风扇"],
+            variation_keywords=[],
+            confidence=0.9,
+            source="deterministic_v1",
+        ),
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+
+    assert search_jobs._platform_search_keywords(job)["1688"] == "手持风扇"
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):
@@ -324,7 +349,7 @@ def test_get_unique_suppliers_returns_platform_specific_top_five(monkeypatch):
     }
     assert diagnostics[1] == {
         "platform": "1688",
-        "searched_keyword": "手持风扇",
+        "searched_keyword": "手持风扇 厂家 工厂 源头厂家 OEM",
         "raw_listing_count": 6,
         "unique_supplier_count": 5,
         "failure": None,

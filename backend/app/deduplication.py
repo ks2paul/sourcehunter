@@ -336,6 +336,8 @@ def _business_maturity_score(listings: list[RawListing]) -> int:
 def _factory_likelihood_score(company_name: str | None, listings: list[RawListing] | None = None) -> int:
     if listings and any((listing.raw_supplier_type or "").lower() == "factory" for listing in listings):
         return 10
+    if listings and _has_1688_factory_signal(listings):
+        return 7
     normalized = _normalize_text(company_name) or ""
     if not normalized:
         return 0
@@ -352,11 +354,38 @@ def _supplier_type(listings: list[RawListing]) -> str:
     supplier_types = {(listing.raw_supplier_type or "").lower() for listing in listings}
     if "factory" in supplier_types:
         return "Verified Factory"
+    if _has_1688_factory_signal(listings):
+        return "Factory Signal (Unverified)"
     if "merchant" in supplier_types:
         return "Verified Merchant"
     if "seller" in supplier_types:
         return "Verified Seller"
     return "Supplier Type Unknown"
+
+
+def _has_1688_factory_signal(listings: list[RawListing]) -> bool:
+    if not any(listing.platform == "1688" for listing in listings):
+        return False
+    factory_terms = (
+        "源头工厂",
+        "源头厂家",
+        "生产厂家",
+        "厂家直销",
+        "厂家供应",
+        "工厂",
+        "厂家",
+        "oem",
+        "odm",
+        "代工",
+        "加工定制",
+        "logo定制",
+        "可印logo",
+    )
+    for listing in listings:
+        product_name = (listing.raw_product_name or "").lower()
+        if any(term in product_name for term in factory_terms):
+            return True
+    return False
 
 
 def _recommendation_reasons(

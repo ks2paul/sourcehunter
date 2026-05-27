@@ -239,6 +239,37 @@ def test_deduplicate_suppliers_uses_1688_product_title_when_company_name_is_unav
     assert supplier.company_name == "洗发水沐浴露套装"
 
 
+def test_deduplicate_suppliers_boosts_unverified_1688_factory_title_signal():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="seller-factory-signal",
+            raw_product_name="源头工厂手持风扇便携式口袋迷你usb充电 可OEM",
+            raw_supplier_type="seller",
+            raw_price="¥9.80",
+            raw_moq="20 pieces",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/2.html",
+            raw_supplier_id="merchant-no-signal",
+            raw_product_name="手持风扇便携式口袋迷你usb充电",
+            raw_supplier_type="merchant",
+            raw_price="¥9.80",
+            raw_moq="20 pieces",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="手持风扇")
+
+    assert suppliers[0].products[0].supplier_id == "seller-factory-signal"
+    assert suppliers[0].supplier_type == "Factory Signal (Unverified)"
+    assert suppliers[0].score_breakdown["factory_likelihood"] == 7
+
+
 def test_deduplicate_suppliers_flags_product_mismatch():
     listings = [
         RawListing(

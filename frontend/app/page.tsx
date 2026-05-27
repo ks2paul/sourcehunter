@@ -847,6 +847,7 @@ function translateSupplierType(supplierType: string, language: Language): string
       "Verified Factory": "已验证工厂",
       "Verified Merchant": "已验证商家",
       "Verified Seller": "已验证卖家",
+      "Factory Signal (Unverified)": "工厂信号（未验证）",
       "Supplier Type Unknown": "供应商类型未知",
     }[supplierType] ?? supplierType
   );
