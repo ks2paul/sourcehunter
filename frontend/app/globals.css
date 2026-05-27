@@ -8,7 +8,9 @@
 
 body {
   margin: 0;
-  background: #f7f8fa;
+  background:
+    radial-gradient(circle at top left, rgba(255, 153, 0, 0.12), transparent 34rem),
+    linear-gradient(180deg, #fffaf2 0%, #f6f7f9 24rem, #f7f8fa 100%);
   color: #17202a;
 }
 
@@ -16,4 +18,8 @@ button,
 input,
 select {
   font: inherit;
+}
+
+::selection {
+  background: rgba(255, 153, 0, 0.28);
 }

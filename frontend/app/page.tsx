@@ -260,11 +260,16 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen">
-      <section className="border-b border-slate-200 bg-white">
+      <section className="border-b border-orange-200 bg-white/95 shadow-sm shadow-orange-100/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-950">SourceHunter</h1>
-            <p className="text-sm text-slate-600">{t.subtitle}</p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#ff9900] text-lg font-black text-slate-950 shadow-sm shadow-orange-300">
+              S
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-950">SourceHunter</h1>
+              <p className="text-sm text-slate-600">{t.subtitle}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2" aria-label={t.languageLabel}>
             {(["zh", "en"] as Language[]).map((item) => (
@@ -272,10 +277,10 @@ export default function HomePage() {
                 type="button"
                 key={item}
                 onClick={() => setLanguage(item)}
-                className={`rounded border px-3 py-1 text-sm font-medium ${
+                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
                   language === item
-                    ? "border-slate-950 bg-slate-950 text-white"
-                    : "border-slate-300 bg-white text-slate-700"
+                    ? "border-[#ff9900] bg-[#ff9900] text-slate-950 shadow-sm shadow-orange-200"
+                    : "border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
                 }`}
               >
                 {copy[item][item]}
@@ -287,8 +292,10 @@ export default function HomePage() {
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-[380px_1fr]">
         <aside className="space-y-4">
-          <form onSubmit={handleSubmit} className="rounded border border-slate-200 bg-white p-5">
-            <h2 className="text-base font-semibold text-slate-950">{t.searchInput}</h2>
+          <form onSubmit={handleSubmit} className="rounded-lg border border-orange-200 bg-white p-5 shadow-sm">
+            <h2 className="border-b border-orange-100 pb-3 text-base font-semibold text-slate-950">
+              {t.searchInput}
+            </h2>
 
             <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="product_keyword">
               {t.productKeyword}
@@ -297,7 +304,7 @@ export default function HomePage() {
               id="product_keyword"
               value={productKeyword}
               onChange={(event) => setProductKeyword(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
               required
             />
 
@@ -308,7 +315,7 @@ export default function HomePage() {
               id="product_features"
               value={productFeatures}
               onChange={(event) => setProductFeatures(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
               placeholder={t.productFeaturesPlaceholder}
             />
 
@@ -319,7 +326,7 @@ export default function HomePage() {
               id="target_price"
               value={targetPrice}
               onChange={(event) => setTargetPrice(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
               inputMode="decimal"
               placeholder={t.optional}
             />
@@ -331,7 +338,7 @@ export default function HomePage() {
               id="moq_preference"
               value={moqPreference}
               onChange={(event) => setMoqPreference(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
               inputMode="numeric"
               placeholder={t.optional}
             />
@@ -343,7 +350,7 @@ export default function HomePage() {
               id="supplier_preference"
               value={supplierPreference}
               onChange={(event) => setSupplierPreference(event.target.value as SupplierPreference)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
             >
               {supplierPreferences.map((preference) => (
                 <option key={preference} value={preference}>
@@ -354,7 +361,7 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="mt-5 w-full rounded bg-slate-950 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="mt-5 w-full rounded-md bg-[#ff9900] px-4 py-2.5 font-semibold text-slate-950 shadow-sm shadow-orange-200 transition hover:bg-[#f08c00] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
               disabled={isLoading}
             >
               {isLoading ? t.creatingJob : t.createJob}
@@ -362,7 +369,7 @@ export default function HomePage() {
           </form>
 
           {job ? (
-            <div className="space-y-4 rounded border border-slate-200 bg-white p-5">
+            <div className="space-y-4 rounded-lg border border-orange-200 bg-white p-5 shadow-sm">
               <KeywordList
                 title={t.englishKeywords}
                 items={job.keyword_expansion.english_keywords}
@@ -385,8 +392,8 @@ export default function HomePage() {
           ) : null}
         </aside>
 
-        <section className="rounded border border-slate-200 bg-white p-5">
-          <h2 className="text-base font-semibold text-slate-950">{t.result}</h2>
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="border-b border-slate-100 pb-3 text-base font-semibold text-slate-950">{t.result}</h2>
 
           {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
 
@@ -407,7 +414,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleFetchSuppliers}
-                  className="rounded bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="rounded-md bg-[#ff9900] px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-orange-200 transition hover:bg-[#f08c00] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
                   disabled={isFetchingSuppliers}
                 >
                   {isFetchingSuppliers ? t.findingSuppliers : t.findSuppliers}
@@ -415,7 +422,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleFetchRawListings}
-                  className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  className="rounded-md border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:bg-slate-100"
                   disabled={isFetchingListings}
                 >
                   {isFetchingListings ? t.fetchingRawListings : t.fetchRawListings}
@@ -444,7 +451,7 @@ export default function HomePage() {
                   {(suppliers.platform_diagnostics ?? []).length > 0 ? (
                     <div className="grid gap-2 md:grid-cols-2">
                       {(suppliers.platform_diagnostics ?? []).map((item) => (
-                        <div key={item.platform} className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+                        <div key={item.platform} className="rounded-md border border-orange-100 bg-orange-50/50 p-3 text-sm">
                           <div className="font-medium text-slate-900">{item.platform}</div>
                           <p className="mt-1 text-slate-600">
                             {t.keyword}: {item.searched_keyword ?? t.unavailable}
@@ -476,10 +483,10 @@ export default function HomePage() {
                               type="button"
                               key={mode}
                               onClick={() => setSupplierSortMode(mode)}
-                              className={`rounded border px-3 py-1 text-sm ${
+                              className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
                                 supplierSortMode === mode
-                                  ? "border-slate-950 bg-slate-950 text-white"
-                                  : "border-slate-300 bg-white text-slate-700"
+                                  ? "border-[#ff9900] bg-[#ff9900] text-slate-950 shadow-sm shadow-orange-200"
+                                  : "border-slate-300 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
                               }`}
                             >
                               {translateSortMode(mode, language)}
@@ -489,7 +496,7 @@ export default function HomePage() {
                         <button
                           type="button"
                           onClick={handleExportSuppliers}
-                          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-900"
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 transition hover:border-orange-300 hover:bg-orange-50"
                         >
                           {t.exportCsv}
                         </button>
@@ -524,7 +531,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={handleCopyRfq}
-                        className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-900"
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 transition hover:border-orange-300 hover:bg-orange-50"
                       >
                         {t.copyRfq}
                       </button>
@@ -546,7 +553,7 @@ export default function HomePage() {
                       {rawListingCounts.map((item) => (
                         <span
                           key={item.platform}
-                          className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-700"
+                          className="rounded-md border border-orange-100 bg-orange-50 px-2 py-1 text-sm text-slate-700"
                         >
                           {item.platform}: {item.count}
                         </span>
@@ -567,7 +574,7 @@ export default function HomePage() {
                       {rawListings.listings.map((listing) => (
                         <article
                           key={`${listing.platform}-${listing.product_url}`}
-                          className="rounded border border-slate-200 p-3"
+                          className="rounded-md border border-slate-200 bg-white p-3 shadow-sm"
                         >
                           <div className="text-xs uppercase tracking-wide text-slate-500">{listing.platform}</div>
                           <h4 className="mt-1 text-sm font-semibold text-slate-950">
@@ -582,12 +589,12 @@ export default function HomePage() {
                           </p>
                           <div className="mt-2 flex flex-wrap gap-3 text-sm">
                             {listing.product_url ? (
-                              <a className="text-blue-700 underline" href={listing.product_url} target="_blank">
+                              <a className="font-medium text-[#c45500] underline" href={listing.product_url} target="_blank">
                                 {t.product}
                               </a>
                             ) : null}
                             {listing.supplier_url ? (
-                              <a className="text-blue-700 underline" href={listing.supplier_url} target="_blank">
+                              <a className="font-medium text-[#c45500] underline" href={listing.supplier_url} target="_blank">
                                 {t.supplier}
                               </a>
                             ) : null}
@@ -626,10 +633,10 @@ function SupplierGroup({
   labels: UiCopy;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
-        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+        <span className="rounded-md border border-orange-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
           {language === "zh"
             ? `${suppliers.length}${labels.supplierUnit}`
             : `${suppliers.length} ${labels.supplierUnit}${suppliers.length === 1 ? "" : "s"}`}
@@ -647,7 +654,7 @@ function SupplierGroup({
           />
         ))
       ) : (
-        <div className="rounded border border-slate-200 p-3 text-sm text-slate-500">
+        <div className="rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-500">
           <p>{labels.noSuppliersForGroup}</p>
           {failureMessage ? <p className="mt-1 text-red-700">{failureMessage}</p> : null}
         </div>
@@ -674,8 +681,8 @@ function SupplierCard({
   const tier = supplier.recommendation_tier ?? "Unrated";
 
   return (
-    <article className="rounded border border-slate-200 p-3">
-      <div className="text-xs uppercase tracking-wide text-slate-500">
+    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-orange-200 hover:shadow-md">
+      <div className="text-xs uppercase tracking-wide text-[#c45500]">
         {supplier.platforms.join(", ")} · {supplier.listing_count}{" "}
         {supplier.listing_count === 1 ? labels.listing : labels.listings}
       </div>
@@ -685,10 +692,10 @@ function SupplierCard({
           <p className="mt-1 text-xs text-slate-500">{translateSupplierType(supplier.supplier_type, language)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+          <div className="rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-sm font-semibold text-slate-950">
             {labels.tier} {tier}
           </div>
-          <div className="rounded border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-950">
+          <div className="rounded-md border border-[#ff9900] bg-[#ff9900] px-2 py-1 text-sm font-bold text-slate-950">
             {labels.score} {supplier.supplier_score}
           </div>
         </div>
@@ -699,11 +706,11 @@ function SupplierCard({
       <p className="mt-1 text-sm text-slate-600">
         {labels.price}: {leadProduct?.price ?? labels.priceUnavailable} · MOQ: {leadProduct?.moq ?? labels.moqUnavailable}
       </p>
-      <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-2">
+      <div className="mt-3 rounded-md border border-orange-100 bg-orange-50/50 p-2">
         <div className="text-xs font-medium text-slate-600">{labels.scoreDetails}</div>
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
           {scoreBreakdownEntries(supplier.score_breakdown, language).map((item) => (
-            <div key={item.key} className="rounded border border-slate-200 bg-white px-2 py-1">
+            <div key={item.key} className="rounded-md border border-slate-200 bg-white px-2 py-1">
               <div className="text-slate-500">{item.label}</div>
               <div className="mt-0.5 font-semibold text-slate-900">{item.value}</div>
             </div>
@@ -736,17 +743,17 @@ function SupplierCard({
         <button
           type="button"
           onClick={() => onBuildRfq(buildRfqDraft(supplier, productKeyword))}
-          className="text-slate-900 underline"
+          className="font-medium text-slate-900 underline decoration-[#ff9900] underline-offset-2"
         >
           {labels.rfqDraft}
         </button>
         {supplier.supplier_url ? (
-          <a className="text-blue-700 underline" href={supplier.supplier_url} target="_blank">
+          <a className="font-medium text-[#c45500] underline underline-offset-2" href={supplier.supplier_url} target="_blank">
             {labels.supplier}
           </a>
         ) : null}
         {leadProduct?.product_url ? (
-          <a className="text-blue-700 underline" href={leadProduct.product_url} target="_blank">
+          <a className="font-medium text-[#c45500] underline underline-offset-2" href={leadProduct.product_url} target="_blank">
             {labels.product}
           </a>
         ) : null}
@@ -757,7 +764,7 @@ function SupplierCard({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-slate-200 p-3">
+    <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-1 break-words text-sm font-medium text-slate-950">{value}</div>
     </div>
@@ -766,11 +773,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function StatusNotice({ title, message, tone }: { title: string; message: string; tone: "blue" }) {
   const toneClassName = {
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    blue: "border-orange-200 bg-orange-50 text-slate-800",
   }[tone];
 
   return (
-    <div className={`rounded border p-3 text-sm ${toneClassName}`}>
+    <div className={`rounded-md border p-3 text-sm ${toneClassName}`}>
       <div className="font-medium">{title}</div>
       <p className="mt-1">{message}</p>
     </div>
@@ -794,7 +801,7 @@ function KeywordList({
   emptyMessage: string;
 }) {
   const toneClassName = {
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    blue: "border-sky-200 bg-sky-50 text-sky-800",
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
     amber: "border-amber-200 bg-amber-50 text-amber-900",
   }[tone];
@@ -805,7 +812,7 @@ function KeywordList({
       {items.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
           {items.map((item) => (
-            <span key={item} className={`rounded border px-2 py-1 text-sm ${toneClassName}`}>
+            <span key={item} className={`rounded-md border px-2 py-1 text-sm font-medium ${toneClassName}`}>
               {item}
             </span>
           ))}
