@@ -10,7 +10,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 8
+SUPPLIER_CACHE_VERSION = 9
 
 
 def create_scraping_worker() -> ScrapingWorker:

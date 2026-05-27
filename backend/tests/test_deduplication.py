@@ -221,6 +221,24 @@ def test_deduplicate_suppliers_factory_only_excludes_verified_non_factories():
     assert suppliers[0].products[0].supplier_id == "factory-shop"
 
 
+def test_deduplicate_suppliers_uses_1688_shop_id_when_company_name_is_unavailable():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="BBBwxiV369psG7ltr3FcivHAQ",
+            raw_product_name="洗发水沐浴露套装",
+            raw_company_name=None,
+            raw_supplier_type="seller",
+        )
+    ]
+
+    supplier = deduplicate_suppliers(listings, product_keyword="洗发水")[0]
+
+    assert supplier.company_name == "1688 Shop ID: BBBwxiV369psG7ltr3FcivHAQ"
+
+
 def test_deduplicate_suppliers_flags_product_mismatch():
     listings = [
         RawListing(

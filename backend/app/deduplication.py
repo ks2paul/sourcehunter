@@ -133,7 +133,7 @@ def _build_supplier(
 
     return UniqueSupplier(
         supplier_id=_supplier_id(identity),
-        company_name=company_name or "Company Name Unavailable",
+        company_name=company_name or _supplier_display_fallback(listings),
         supplier_type=supplier_type,
         supplier_url=supplier_url,
         platforms=platforms,
@@ -157,6 +157,16 @@ def _build_supplier(
             for listing in listings
         ],
     )
+
+
+def _supplier_display_fallback(listings: list[RawListing]) -> str:
+    supplier_id = next((listing.raw_supplier_id for listing in listings if listing.raw_supplier_id), None)
+    platform = next((listing.platform for listing in listings if listing.platform), None)
+    if supplier_id and platform == "1688":
+        return f"1688 Shop ID: {supplier_id}"
+    if supplier_id:
+        return f"Supplier ID: {supplier_id}"
+    return "Company Name Unavailable"
 
 
 def _supplier_id(identity: str) -> str:
