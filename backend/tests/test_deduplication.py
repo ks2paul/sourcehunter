@@ -221,7 +221,7 @@ def test_deduplicate_suppliers_factory_only_excludes_verified_non_factories():
     assert suppliers[0].products[0].supplier_id == "factory-shop"
 
 
-def test_deduplicate_suppliers_uses_1688_shop_id_when_company_name_is_unavailable():
+def test_deduplicate_suppliers_uses_1688_product_title_when_company_name_is_unavailable():
     listings = [
         RawListing(
             platform="1688",
@@ -236,7 +236,7 @@ def test_deduplicate_suppliers_uses_1688_shop_id_when_company_name_is_unavailabl
 
     supplier = deduplicate_suppliers(listings, product_keyword="洗发水")[0]
 
-    assert supplier.company_name == "1688 Shop ID: BBBwxiV369psG7ltr3FcivHAQ"
+    assert supplier.company_name == "洗发水沐浴露套装"
 
 
 def test_deduplicate_suppliers_flags_product_mismatch():

@@ -160,8 +160,11 @@ def _build_supplier(
 
 
 def _supplier_display_fallback(listings: list[RawListing]) -> str:
-    supplier_id = next((listing.raw_supplier_id for listing in listings if listing.raw_supplier_id), None)
+    product_name = next((listing.raw_product_name for listing in listings if listing.raw_product_name), None)
     platform = next((listing.platform for listing in listings if listing.platform), None)
+    if product_name and platform == "1688":
+        return product_name
+    supplier_id = next((listing.raw_supplier_id for listing in listings if listing.raw_supplier_id), None)
     if supplier_id and platform == "1688":
         return f"1688 Shop ID: {supplier_id}"
     if supplier_id:
