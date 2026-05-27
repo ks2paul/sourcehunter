@@ -932,6 +932,8 @@ function translateRiskFlag(flag: string, language: Language): string {
       "MOQ unavailable; confirm minimum order quantity.": "MOQ 不可用，需要确认最小起订量。",
       "MOQ is high for trial order.": "MOQ 对试单偏高。",
       "Price is far below market median; verify quotation.": "价格明显低于市场中位数，需要核实报价。",
+      "Requested device model is not visible in the product title.": "产品标题看不到指定机型。",
+      "Listing appears to be tooling or equipment rather than the requested finished accessory.": "该 listing 像工具/设备，不是成品配件。",
     }[flag] ?? flag
   );
 }

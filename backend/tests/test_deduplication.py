@@ -313,6 +313,66 @@ def test_deduplicate_suppliers_downgrades_raw_material_results_for_finished_good
     assert supplier.supplier_score < 40
 
 
+def test_deduplicate_suppliers_filters_wrong_iphone_model_for_phone_case():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="iphone-17-shop",
+            raw_product_name="Source Factory Suitable for Apple iPhone 17 Pro Max Phone Case",
+            raw_supplier_type="seller",
+            raw_price="¥14",
+            raw_moq="100 pieces",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/2.html",
+            raw_supplier_id="iphone-16-pro-max-shop",
+            raw_product_name="Factory Direct iPhone 16 Pro Max Phone Case Supports OEM",
+            raw_supplier_type="seller",
+            raw_price="¥7.30",
+            raw_moq="2 pieces",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(
+        listings,
+        product_keyword="iphone 16 pro max phone case",
+        supplier_preference="Factory Preferred",
+    )
+
+    assert len(suppliers) == 1
+    assert suppliers[0].products[0].supplier_id == "iphone-16-pro-max-shop"
+
+
+def test_deduplicate_suppliers_filters_phone_case_equipment_for_finished_case_request():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://printer.example/product.html",
+            supplier_url="https://printer.en.made-in-china.com/",
+            raw_product_name="Mobile Phone Case Printer Machine for iPhone 16 Pro Max",
+            raw_company_name="Printer Supplier",
+        ),
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://case.example/product.html",
+            supplier_url="https://case.en.made-in-china.com/",
+            raw_product_name="Clear TPU Phone Case for iPhone 16 Pro Max",
+            raw_company_name="Case Supplier",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="iphone 16 pro max phone case")
+
+    assert len(suppliers) == 1
+    assert suppliers[0].company_name == "Case Supplier"
+
+
 def test_deduplicate_suppliers_flags_abnormally_low_price_against_market_median():
     listings = [
         RawListing(

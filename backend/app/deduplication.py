@@ -63,6 +63,7 @@ def deduplicate_suppliers(
         )
         for identity, group in grouped.items()
     ]
+    suppliers = [supplier for supplier in suppliers if not _has_hard_mismatch(supplier)]
     if supplier_preference == "Factory Only":
         suppliers = [supplier for supplier in suppliers if supplier.supplier_type == "Verified Factory"]
 
@@ -226,6 +227,10 @@ def _score_supplier(
 
 def _final_supplier_score(score_breakdown: dict[str, int], risk_flags: list[str]) -> int:
     score = min(100, sum(score_breakdown.values()))
+    if "Requested device model is not visible in the product title." in risk_flags:
+        score -= 50
+    if "Listing appears to be tooling or equipment rather than the requested finished accessory." in risk_flags:
+        score -= 45
     if "Listing appears to be raw material rather than a finished product." in risk_flags:
         score -= 35
     if "Product title may not match sourcing intent." in risk_flags:
@@ -475,6 +480,10 @@ def _risk_flags(
         score_breakdown["product_match_quality"] < 20 or _looks_like_manual_folding_fan(product_keyword, listings)
     ):
         flags.append("Product title may not match sourcing intent.")
+    if product_keyword and _requested_phone_case(product_keyword) and not _matches_requested_device_model(product_keyword, listings):
+        flags.append("Requested device model is not visible in the product title.")
+    if product_keyword and _requested_phone_case(product_keyword) and _looks_like_phone_case_equipment(listings):
+        flags.append("Listing appears to be tooling or equipment rather than the requested finished accessory.")
     if listings and all(looks_like_raw_material_result(listing.raw_product_name) for listing in listings):
         flags.append("Listing appears to be raw material rather than a finished product.")
 
@@ -509,6 +518,75 @@ def _looks_like_manual_folding_fan(product_keyword: str, listings: list[RawListi
     for listing in listings:
         product_name = (listing.raw_product_name or "").lower()
         if any(term in product_name for term in manual_terms) and not any(term in product_name for term in electric_terms):
+            return True
+    return False
+
+
+def _has_hard_mismatch(supplier: UniqueSupplier) -> bool:
+    hard_mismatch_flags = {
+        "Requested device model is not visible in the product title.",
+        "Listing appears to be tooling or equipment rather than the requested finished accessory.",
+    }
+    return any(flag in hard_mismatch_flags for flag in supplier.risk_flags)
+
+
+def _requested_phone_case(product_keyword: str) -> bool:
+    normalized = product_keyword.lower()
+    compact = re.sub(r"\s+", "", normalized)
+    return ("phone case" in normalized or "mobile phone case" in normalized or "手机壳" in compact or "保护壳" in compact) and (
+        "iphone" in normalized or "apple" in normalized or "苹果" in normalized
+    )
+
+
+def _matches_requested_device_model(product_keyword: str, listings: list[RawListing]) -> bool:
+    requested = _iphone_model_requirements(product_keyword)
+    if requested is None:
+        return True
+    for listing in listings:
+        title = (listing.raw_product_name or "").lower()
+        compact_title = re.sub(r"[^a-z0-9]+", "", title)
+        if "iphone" not in compact_title and "apple" not in compact_title:
+            continue
+        if requested["series"] not in compact_title:
+            continue
+        if requested["pro"] and "pro" not in compact_title:
+            continue
+        if requested["max"] and "max" not in compact_title:
+            continue
+        if _conflicting_iphone_series(compact_title, requested["series"]) and requested["series"] not in compact_title:
+            continue
+        return True
+    return False
+
+
+def _iphone_model_requirements(product_keyword: str) -> dict[str, object] | None:
+    normalized = product_keyword.lower()
+    compact = re.sub(r"[^a-z0-9]+", "", normalized)
+    match = re.search(r"iphone\s*(\d{1,2})|iphone(\d{1,2})|苹果\s*(\d{1,2})", normalized)
+    series = (match.group(1) or match.group(2) or match.group(3)) if match else None
+    if not series:
+        compact_match = re.search(r"iphone(\d{1,2})", compact)
+        series = compact_match.group(1) if compact_match else None
+    if not series:
+        return None
+    return {
+        "series": str(series),
+        "pro": "pro" in compact,
+        "max": "max" in compact,
+    }
+
+
+def _conflicting_iphone_series(compact_title: str, requested_series: str) -> bool:
+    series_numbers = set(re.findall(r"iphone(\d{1,2})|apple(\d{1,2})", compact_title))
+    flattened = {number for pair in series_numbers for number in pair if number}
+    return bool(flattened and requested_series not in flattened)
+
+
+def _looks_like_phone_case_equipment(listings: list[RawListing]) -> bool:
+    equipment_terms = ("mold", "mould", "printer", "printing machine", "heat press", "making machine", "injection mould")
+    for listing in listings:
+        title = (listing.raw_product_name or "").lower()
+        if any(term in title for term in equipment_terms):
             return True
     return False
 
