@@ -2,6 +2,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+
+def authenticated_client():
+    client = TestClient(app)
+    response = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert response.status_code == 200
+    return client
+
+
 from app.models import KeywordExpansion, SearchJob, SearchJobCreate, SearchJobStatus, SearchProgress, SupplierPreference, utc_now
 from app.storage import SearchJobRepository
 
@@ -79,7 +88,7 @@ def test_search_job_repository_persists_raw_listing_results(tmp_path):
 
 
 def test_create_search_job_api_returns_job():
-    client = TestClient(app)
+    client = authenticated_client()
 
     response = client.post(
         "/api/search-jobs",
@@ -101,7 +110,7 @@ def test_create_search_job_api_returns_job():
 
 
 def test_get_search_job_api_returns_created_job():
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "picture frame"}).json()
 
     response = client.get(f"/api/search-jobs/{created['job_id']}")
@@ -113,7 +122,7 @@ def test_get_search_job_api_returns_created_job():
 
 
 def test_get_search_job_api_returns_404_for_missing_job():
-    client = TestClient(app)
+    client = authenticated_client()
 
     response = client.get("/api/search-jobs/job_missing")
 
@@ -255,7 +264,7 @@ def test_get_raw_listings_returns_source_backed_result(monkeypatch):
             )
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
 
     response = client.get(f"/api/search-jobs/{created['job_id']}/raw-listings")
@@ -303,7 +312,7 @@ def test_get_unique_suppliers_deduplicates_raw_listings(monkeypatch):
             )
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
 
     response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
@@ -359,7 +368,7 @@ def test_get_unique_suppliers_returns_platform_specific_top_five(monkeypatch):
             return ScrapeResult(listings=listings, failures=[])
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
 
     response = client.get(f"/api/search-jobs/{created['job_id']}/suppliers")
@@ -411,7 +420,7 @@ def test_get_unique_suppliers_honors_factory_only_without_guessing(monkeypatch):
             )
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post(
         "/api/search-jobs",
         json={"product_keyword": "handheld fan", "supplier_preference": "Factory Only"},
@@ -432,7 +441,7 @@ def test_get_unique_suppliers_uses_cached_result(monkeypatch):
             raise AssertionError("worker should not be called when supplier result is cached")
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FailingWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
     search_jobs.repository.save_supplier_result(
         created["job_id"],
@@ -507,7 +516,7 @@ def test_get_unique_suppliers_refreshes_legacy_cache_without_platform_groups(mon
             )
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
     search_jobs.repository.save_supplier_result(
         created["job_id"],
@@ -548,7 +557,7 @@ def test_get_unique_suppliers_refreshes_stale_platform_cache(monkeypatch):
             )
 
     monkeypatch.setattr(search_jobs, "create_scraping_worker", lambda: FakeWorker())
-    client = TestClient(app)
+    client = authenticated_client()
     created = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
     search_jobs.repository.save_supplier_result(
         created["job_id"],

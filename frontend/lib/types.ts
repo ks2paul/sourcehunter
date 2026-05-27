@@ -1,5 +1,9 @@
 export type SupplierPreference = "Factory Only" | "Factory Preferred" | "Any Supplier";
 
+export type AuthUser = {
+  username: string;
+};
+
 export type KeywordExpansion = {
   english_keywords: string[];
   chinese_keywords: string[];

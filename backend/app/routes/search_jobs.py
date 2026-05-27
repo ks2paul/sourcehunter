@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.auth import require_authenticated_user
 from app.deduplication import deduplicate_suppliers
 from app.models import RawListingsResponse, SearchJob, SearchJobCreate, SuppliersResponse
 from app.scraping.platforms.elimapi_1688 import Elimapi1688Adapter
@@ -8,7 +9,7 @@ from app.scraping.worker import ScrapingWorker
 from app.sourcing_intent import china_1688_finished_product_keyword, made_in_china_finished_product_keyword
 from app.storage import SearchJobRepository
 
-router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"])
+router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"], dependencies=[Depends(require_authenticated_user)])
 repository = SearchJobRepository()
 SUPPLIER_CACHE_VERSION = 14
 

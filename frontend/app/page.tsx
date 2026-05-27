@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { createSearchJob, getRawListings, getUniqueSuppliers } from "@/lib/api";
+import { createSearchJob, getCurrentUser, getRawListings, getUniqueSuppliers, login, logout } from "@/lib/api";
 import { downloadCsv, suppliersToCsv } from "@/lib/exportSuppliers";
 import { buildRfqDraft } from "@/lib/rfq";
 import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
-import type { RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse, UniqueSupplier } from "@/lib/types";
+import type { AuthUser, RawListingsResponse, SearchJob, SupplierPreference, SuppliersResponse, UniqueSupplier } from "@/lib/types";
 
 type Language = "zh" | "en";
 
@@ -77,6 +77,26 @@ const copy = {
     languageLabel: "语言",
     zh: "中文",
     en: "English",
+    login: "登录",
+    register: "注册",
+    logout: "退出",
+    username: "账号",
+    password: "密码",
+    usernamePlaceholder: "请输入账号",
+    passwordPlaceholder: "请输入密码",
+    loginTitle: "登录 SourceHunter",
+    loginSubtitle: "目前只开放内部管理员账号。",
+    loggingIn: "登录中...",
+    loginFailed: "账号或密码错误。",
+    registerDisabled: "注册暂未开放",
+    registerDisabledMessage: "目前 SourceHunter 只开放 admin 内部账号。未来 SaaS 版本会开放团队注册。",
+    signedInAs: "已登录",
+    accessLabel: "权限",
+    accessValue: "仅管理员",
+    modeLabel: "模式",
+    modeValue: "内部 MVP",
+    futureLabel: "未来",
+    futureValue: "SaaS 就绪",
   },
   en: {
     subtitle: "AI-powered supplier discovery and procurement intelligence",
@@ -142,6 +162,26 @@ const copy = {
     languageLabel: "Language",
     zh: "中文",
     en: "English",
+    login: "Login",
+    register: "Register",
+    logout: "Logout",
+    username: "Username",
+    password: "Password",
+    usernamePlaceholder: "Enter username",
+    passwordPlaceholder: "Enter password",
+    loginTitle: "Login to SourceHunter",
+    loginSubtitle: "Only the internal admin account is enabled for now.",
+    loggingIn: "Logging in...",
+    loginFailed: "Invalid username or password.",
+    registerDisabled: "Registration is closed",
+    registerDisabledMessage: "SourceHunter currently only allows the admin account. Team registration can be added in the future SaaS version.",
+    signedInAs: "Signed in",
+    accessLabel: "Access",
+    accessValue: "Admin only",
+    modeLabel: "Mode",
+    modeValue: "Internal MVP",
+    futureLabel: "Future",
+    futureValue: "SaaS ready",
   },
 } as const;
 
@@ -164,6 +204,13 @@ export default function HomePage() {
   const [rfqDraft, setRfqDraft] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [loginUsername, setLoginUsername] = useState("admin");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
   const t = copy[language];
   const sortedPlatformGroups = useMemo(
     () =>
@@ -180,6 +227,52 @@ export default function HomePage() {
     }
     return Array.from(counts.entries()).map(([platform, count]) => ({ platform, count }));
   }, [rawListings]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCurrentUser()
+      .then((user) => {
+        if (isMounted) {
+          setAuthUser(user);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAuthUser(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsLoggingIn(true);
+    setAuthError(null);
+    try {
+      setAuthUser(await login(loginUsername, loginPassword));
+      setLoginPassword("");
+    } catch {
+      setAuthError(t.loginFailed);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }
+
+  async function handleLogout() {
+    await logout();
+    setAuthUser(null);
+    setJob(null);
+    setSuppliers(null);
+    setRawListings(null);
+    setRfqDraft(null);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -271,25 +364,86 @@ export default function HomePage() {
               <p className="text-sm text-slate-600">{t.subtitle}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2" aria-label={t.languageLabel}>
-            {(["zh", "en"] as Language[]).map((item) => (
-              <button
-                type="button"
-                key={item}
-                onClick={() => setLanguage(item)}
-                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                  language === item
-                    ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                    : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-                }`}
-              >
-                {copy[item][item]}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {authUser ? (
+              <div className="flex items-center gap-2">
+                <span className="metric-tile rounded-md border border-orange-100 bg-orange-50 px-3 py-1.5 text-sm font-medium text-slate-800">
+                  {t.signedInAs}: {authUser.username}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="secondary-button rounded-md border border-orange-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+                >
+                  {t.logout}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("login")}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                    authMode === "login"
+                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
+                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
+                  }`}
+                >
+                  {t.login}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("register")}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                    authMode === "register"
+                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
+                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
+                  }`}
+                >
+                  {t.register}
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2" aria-label={t.languageLabel}>
+              {(["zh", "en"] as Language[]).map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => setLanguage(item)}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                    language === item
+                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
+                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
+                  }`}
+                >
+                  {copy[item][item]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
+      {isCheckingSession ? (
+        <section className="mx-auto max-w-6xl px-6 py-8">
+          <div className="surface-panel rounded-lg border border-orange-200 bg-white p-5 text-sm text-slate-600">
+            {language === "zh" ? "正在检查登录状态..." : "Checking session..."}
+          </div>
+        </section>
+      ) : !authUser ? (
+        <AuthGate
+          authMode={authMode}
+          setAuthMode={setAuthMode}
+          loginUsername={loginUsername}
+          setLoginUsername={setLoginUsername}
+          loginPassword={loginPassword}
+          setLoginPassword={setLoginPassword}
+          onLogin={handleLogin}
+          isLoggingIn={isLoggingIn}
+          authError={authError}
+          labels={t}
+        />
+      ) : (
       <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-[380px_1fr]">
         <aside className="space-y-4">
           <form onSubmit={handleSubmit} className="rounded-lg border border-orange-200 bg-white p-5 surface-panel">
@@ -611,7 +765,138 @@ export default function HomePage() {
           ) : null}
         </section>
       </section>
+      )}
     </main>
+  );
+}
+
+function AuthGate({
+  authMode,
+  setAuthMode,
+  loginUsername,
+  setLoginUsername,
+  loginPassword,
+  setLoginPassword,
+  onLogin,
+  isLoggingIn,
+  authError,
+  labels,
+}: {
+  authMode: "login" | "register";
+  setAuthMode: (mode: "login" | "register") => void;
+  loginUsername: string;
+  setLoginUsername: (value: string) => void;
+  loginPassword: string;
+  setLoginPassword: (value: string) => void;
+  onLogin: (event: FormEvent<HTMLFormElement>) => void;
+  isLoggingIn: boolean;
+  authError: string | null;
+  labels: UiCopy;
+}) {
+  return (
+    <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-[420px_1fr]">
+      <div className="surface-panel rounded-lg border border-orange-200 bg-white p-6">
+        <div className="mb-5 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setAuthMode("login")}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+              authMode === "login"
+                ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
+                : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
+            }`}
+          >
+            {labels.login}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAuthMode("register")}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+              authMode === "register"
+                ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
+                : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
+            }`}
+          >
+            {labels.register}
+          </button>
+        </div>
+
+        {authMode === "login" ? (
+          <form onSubmit={onLogin}>
+            <h2 className="text-lg font-semibold text-slate-950">{labels.loginTitle}</h2>
+            <p className="mt-1 text-sm text-slate-600">{labels.loginSubtitle}</p>
+
+            <label className="mt-5 block text-sm font-medium text-slate-700" htmlFor="login_username">
+              {labels.username}
+            </label>
+            <input
+              id="login_username"
+              value={loginUsername}
+              onChange={(event) => setLoginUsername(event.target.value)}
+              className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
+              placeholder={labels.usernamePlaceholder}
+              autoComplete="username"
+              required
+            />
+
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="login_password">
+              {labels.password}
+            </label>
+            <input
+              id="login_password"
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
+              className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
+              placeholder={labels.passwordPlaceholder}
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+
+            {authError ? <p className="mt-3 text-sm font-medium text-red-700">{authError}</p> : null}
+
+            <button
+              type="submit"
+              className="primary-button mt-5 w-full rounded-md bg-[#ff9900] px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-[#f08c00] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+              disabled={isLoggingIn}
+            >
+              {isLoggingIn ? labels.loggingIn : labels.login}
+            </button>
+          </form>
+        ) : (
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">{labels.registerDisabled}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{labels.registerDisabledMessage}</p>
+            <button
+              type="button"
+              onClick={() => setAuthMode("login")}
+              className="secondary-button mt-5 rounded-md border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-orange-50"
+            >
+              {labels.login}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="surface-panel rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-slate-950">SourceHunter</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">{labels.subtitle}</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="metric-tile rounded-md border border-orange-100 bg-orange-50 p-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-[#c45500]">{labels.accessLabel}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">{labels.accessValue}</div>
+          </div>
+          <div className="metric-tile rounded-md border border-slate-200 bg-white p-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{labels.modeLabel}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">{labels.modeValue}</div>
+          </div>
+          <div className="metric-tile rounded-md border border-slate-200 bg-white p-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{labels.futureLabel}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-950">{labels.futureValue}</div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
