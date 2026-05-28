@@ -278,8 +278,8 @@ def test_platform_search_keywords_translate_chinese_features_for_made_in_china()
 
     keywords = search_jobs._platform_search_keywords(job)
 
-    assert keywords["Made-in-China"] == "portable mattress air pump rechargeable car adapter manufacturer"
-    assert keywords["1688"] == "床垫 便携 充气泵 车载 充电 小型 厂家 工厂 源头厂家 OEM 可移动，可车充，充电款"
+    assert keywords["Made-in-China"] == "portable electric air pump for inflatable mattress rechargeable 12v dc manufacturer"
+    assert keywords["1688"] == "充气床 电动充气泵 便携 充电 小型 厂家 工厂 源头厂家 OEM 可移动，可车充，充电款"
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):

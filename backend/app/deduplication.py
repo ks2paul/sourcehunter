@@ -546,6 +546,13 @@ def _risk_flags(
         flags.append("Requested device model is not visible in the product title.")
     if product_keyword and _requested_phone_case(product_keyword) and _looks_like_phone_case_equipment(listings):
         flags.append("Listing appears to be tooling or equipment rather than the requested finished accessory.")
+    if product_keyword and _requested_mattress_air_pump(product_keyword):
+        if _looks_like_adult_product(listings):
+            flags.append("Listing appears to be adult products rather than the requested mattress air pump.")
+        if _looks_like_automotive_tool_for_mattress_pump(listings):
+            flags.append("Listing appears to be automotive tools rather than the requested mattress air pump.")
+        if _looks_like_industrial_pump_for_mattress_pump(listings):
+            flags.append("Listing appears to be industrial pump equipment rather than a portable mattress air pump.")
     if listings and all(looks_like_raw_material_result(listing.raw_product_name) for listing in listings):
         flags.append("Listing appears to be raw material rather than a finished product.")
 
@@ -588,6 +595,9 @@ def _has_hard_mismatch(supplier: UniqueSupplier) -> bool:
     hard_mismatch_flags = {
         "Requested device model is not visible in the product title.",
         "Listing appears to be tooling or equipment rather than the requested finished accessory.",
+        "Listing appears to be adult products rather than the requested mattress air pump.",
+        "Listing appears to be automotive tools rather than the requested mattress air pump.",
+        "Listing appears to be industrial pump equipment rather than a portable mattress air pump.",
     }
     return any(flag in hard_mismatch_flags for flag in supplier.risk_flags)
 
@@ -653,7 +663,106 @@ def _looks_like_phone_case_equipment(listings: list[RawListing]) -> bool:
     return False
 
 
+def _requested_mattress_air_pump(product_keyword: str) -> bool:
+    normalized = product_keyword.lower()
+    compact = re.sub(r"\s+", "", normalized)
+    english_match = any(term in normalized for term in ("mattress air pump", "air mattress pump", "inflatable mattress pump"))
+    chinese_match = "充气泵" in compact and any(term in compact for term in ("床垫", "充气床", "气垫床"))
+    return english_match or chinese_match
+
+
+def _title_text(listings: list[RawListing]) -> str:
+    return " ".join((listing.raw_product_name or "") for listing in listings).lower()
+
+
+def _has_mattress_air_bed_context(title: str) -> bool:
+    compact = re.sub(r"\s+", "", title)
+    mattress_terms = (
+        "mattress",
+        "air bed",
+        "airbed",
+        "inflatable bed",
+        "inflatable mattress",
+        "床垫",
+        "充气床",
+        "气垫床",
+    )
+    return any(term in title or term in compact for term in mattress_terms)
+
+
+def _looks_like_adult_product(listings: list[RawListing]) -> bool:
+    title = _title_text(listings)
+    adult_terms = (
+        "adult",
+        "sex toy",
+        "vibrator",
+        "condom",
+        "dildo",
+        "masturbator",
+        "成人",
+        "情趣",
+        "飞机杯",
+        "跳蛋",
+        "振动棒",
+        "震动棒",
+        "避孕套",
+        "成人用品",
+        "情趣用品",
+    )
+    return any(term in title for term in adult_terms)
+
+
+def _looks_like_automotive_tool_for_mattress_pump(listings: list[RawListing]) -> bool:
+    title = _title_text(listings)
+    if _has_mattress_air_bed_context(title):
+        return False
+    automotive_tool_terms = (
+        "car tool",
+        "automotive tool",
+        "tire inflator",
+        "tyre inflator",
+        "tire pump",
+        "tyre pump",
+        "jack",
+        "wrench",
+        "diagnostic",
+        "garage",
+        "车载工具",
+        "汽车工具",
+        "补胎",
+        "胎压",
+        "轮胎",
+        "千斤顶",
+        "扳手",
+    )
+    return any(term in title for term in automotive_tool_terms)
+
+
+def _looks_like_industrial_pump_for_mattress_pump(listings: list[RawListing]) -> bool:
+    title = _title_text(listings)
+    if _has_mattress_air_bed_context(title):
+        return False
+    industrial_terms = (
+        "industrial pump",
+        "air compressor",
+        "high pressure",
+        "heavy duty",
+        "工业",
+        "空压机",
+        "高压",
+        "大型",
+    )
+    return any(term in title for term in industrial_terms)
+
+
 def _recommendation_tier(supplier_score: int, risk_flags: list[str]) -> str:
+    hard_mismatch_flags = {
+        "Listing appears to be adult products rather than the requested mattress air pump.",
+        "Listing appears to be automotive tools rather than the requested mattress air pump.",
+        "Listing appears to be industrial pump equipment rather than a portable mattress air pump.",
+    }
+    if any(flag in hard_mismatch_flags for flag in risk_flags):
+        return "D"
     if "Listing appears to be raw material rather than a finished product." in risk_flags:
         return "D"
     if "Product title may not match sourcing intent." in risk_flags:
@@ -668,6 +777,12 @@ def _recommendation_tier(supplier_score: int, risk_flags: list[str]) -> str:
 
 
 def _recommended_action(tier: str, reasons: list[str], risk_flags: list[str]) -> str:
+    if "Listing appears to be adult products rather than the requested mattress air pump." in risk_flags:
+        return "Do not shortlist adult-product listings for mattress air pump sourcing"
+    if "Listing appears to be automotive tools rather than the requested mattress air pump." in risk_flags:
+        return "Do not shortlist automotive tool listings for mattress air pump sourcing"
+    if "Listing appears to be industrial pump equipment rather than a portable mattress air pump." in risk_flags:
+        return "Do not shortlist industrial pump listings for portable mattress air pump sourcing"
     if "Listing appears to be raw material rather than a finished product." in risk_flags:
         return "Do not shortlist raw material listings for finished-product sourcing"
     if "Product title may not match sourcing intent." in risk_flags:

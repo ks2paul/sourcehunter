@@ -96,6 +96,10 @@ const copy = {
     noHistory: "暂无历史记录。",
     loadHistory: "载入",
     loadingHistory: "载入历史中...",
+    close: "关闭",
+    historyTime: "时间",
+    switchToEnglish: "English",
+    switchToChinese: "中文",
     accessLabel: "权限",
     accessValue: "仅管理员",
     modeLabel: "模式",
@@ -186,6 +190,10 @@ const copy = {
     noHistory: "No history yet.",
     loadHistory: "Load",
     loadingHistory: "Loading history...",
+    close: "Close",
+    historyTime: "Time",
+    switchToEnglish: "English",
+    switchToChinese: "中文",
     accessLabel: "Access",
     accessValue: "Admin only",
     modeLabel: "Mode",
@@ -223,6 +231,7 @@ export default function HomePage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [history, setHistory] = useState<SearchJob[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const t = copy[language];
   const sortedPlatformGroups = useMemo(
     () =>
@@ -290,6 +299,7 @@ export default function HomePage() {
     setRawListings(null);
     setRfqDraft(null);
     setHistory([]);
+    setIsHistoryOpen(false);
   }
 
   async function refreshHistory() {
@@ -313,6 +323,12 @@ export default function HomePage() {
     setRfqDraft(null);
     setCopyMessage(null);
     setError(null);
+    setIsHistoryOpen(false);
+  }
+
+  async function handleOpenHistory() {
+    setIsHistoryOpen(true);
+    await refreshHistory();
   }
 
   function handleLoadHistoryItem(historyJob: SearchJob) {
@@ -327,6 +343,7 @@ export default function HomePage() {
     setRfqDraft(null);
     setCopyMessage(null);
     setError(null);
+    setIsHistoryOpen(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -423,9 +440,13 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-end gap-3">
             {authUser ? (
               <div className="flex items-center gap-2">
-                <span className="metric-tile rounded-md border border-orange-100 bg-orange-50 px-3 py-1.5 text-sm font-medium text-slate-800">
-                  {t.signedInAs}: {authUser.username}
-                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenHistory}
+                  className="secondary-button rounded-md border border-orange-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+                >
+                  {t.history}
+                </button>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -439,46 +460,34 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setAuthMode("login")}
-                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                    authMode === "login"
-                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-                  }`}
+                  className="primary-button rounded-md border border-[#ff9900] bg-[#ff9900] px-3 py-1.5 text-sm font-medium text-slate-950 transition hover:bg-[#f08c00]"
                 >
                   {t.login}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthMode("register")}
-                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                    authMode === "register"
-                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-                  }`}
-                >
-                  {t.register}
-                </button>
               </div>
             )}
-            <div className="flex items-center gap-2" aria-label={t.languageLabel}>
-              {(["zh", "en"] as Language[]).map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  onClick={() => setLanguage(item)}
-                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                    language === item
-                      ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                      : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-                  }`}
-                >
-                  {copy[item][item]}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              aria-label={t.languageLabel}
+              onClick={() => setLanguage(language === "zh" ? "en" : "zh")}
+              className="secondary-button rounded-md border border-orange-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+            >
+              {language === "zh" ? t.switchToEnglish : t.switchToChinese}
+            </button>
           </div>
         </div>
       </section>
+
+      {isHistoryOpen ? (
+        <HistoryModal
+          jobs={history}
+          isLoading={isLoadingHistory}
+          onLoad={handleLoadHistoryItem}
+          onClose={() => setIsHistoryOpen(false)}
+          labels={t}
+          language={language}
+        />
+      ) : null}
 
       {isCheckingSession ? (
         <section className="mx-auto max-w-6xl px-6 py-8">
@@ -488,8 +497,6 @@ export default function HomePage() {
         </section>
       ) : !authUser ? (
         <AuthGate
-          authMode={authMode}
-          setAuthMode={setAuthMode}
           loginUsername={loginUsername}
           setLoginUsername={setLoginUsername}
           loginPassword={loginPassword}
@@ -584,13 +591,6 @@ export default function HomePage() {
               {t.reset}
             </button>
           </form>
-
-          <HistoryPanel
-            jobs={history}
-            isLoading={isLoadingHistory}
-            onLoad={handleLoadHistoryItem}
-            labels={t}
-          />
 
           {job ? (
             <div className="space-y-4 rounded-lg border border-orange-200 bg-white p-5 surface-panel">
@@ -841,8 +841,6 @@ export default function HomePage() {
 }
 
 function AuthGate({
-  authMode,
-  setAuthMode,
   loginUsername,
   setLoginUsername,
   loginPassword,
@@ -852,8 +850,6 @@ function AuthGate({
   authError,
   labels,
 }: {
-  authMode: "login" | "register";
-  setAuthMode: (mode: "login" | "register") => void;
   loginUsername: string;
   setLoginUsername: (value: string) => void;
   loginPassword: string;
@@ -866,86 +862,47 @@ function AuthGate({
   return (
     <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-[420px_1fr]">
       <div className="surface-panel rounded-lg border border-orange-200 bg-white p-6">
-        <div className="mb-5 flex gap-2">
+        <form onSubmit={onLogin}>
+          <h2 className="text-lg font-semibold text-slate-950">{labels.loginTitle}</h2>
+          <p className="mt-1 text-sm text-slate-600">{labels.loginSubtitle}</p>
+
+          <label className="mt-5 block text-sm font-medium text-slate-700" htmlFor="login_username">
+            {labels.username}
+          </label>
+          <input
+            id="login_username"
+            value={loginUsername}
+            onChange={(event) => setLoginUsername(event.target.value)}
+            className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
+            placeholder={labels.usernamePlaceholder}
+            autoComplete="username"
+            required
+          />
+
+          <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="login_password">
+            {labels.password}
+          </label>
+          <input
+            id="login_password"
+            value={loginPassword}
+            onChange={(event) => setLoginPassword(event.target.value)}
+            className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
+            placeholder={labels.passwordPlaceholder}
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+
+          {authError ? <p className="mt-3 text-sm font-medium text-red-700">{authError}</p> : null}
+
           <button
-            type="button"
-            onClick={() => setAuthMode("login")}
-            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-              authMode === "login"
-                ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-            }`}
+            type="submit"
+            className="primary-button mt-5 w-full rounded-md bg-[#ff9900] px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-[#f08c00] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+            disabled={isLoggingIn}
           >
-            {labels.login}
+            {isLoggingIn ? labels.loggingIn : labels.login}
           </button>
-          <button
-            type="button"
-            onClick={() => setAuthMode("register")}
-            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-              authMode === "register"
-                ? "primary-button border-[#ff9900] bg-[#ff9900] text-slate-950"
-                : "secondary-button border-orange-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50"
-            }`}
-          >
-            {labels.register}
-          </button>
-        </div>
-
-        {authMode === "login" ? (
-          <form onSubmit={onLogin}>
-            <h2 className="text-lg font-semibold text-slate-950">{labels.loginTitle}</h2>
-            <p className="mt-1 text-sm text-slate-600">{labels.loginSubtitle}</p>
-
-            <label className="mt-5 block text-sm font-medium text-slate-700" htmlFor="login_username">
-              {labels.username}
-            </label>
-            <input
-              id="login_username"
-              value={loginUsername}
-              onChange={(event) => setLoginUsername(event.target.value)}
-              className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
-              placeholder={labels.usernamePlaceholder}
-              autoComplete="username"
-              required
-            />
-
-            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="login_password">
-              {labels.password}
-            </label>
-            <input
-              id="login_password"
-              value={loginPassword}
-              onChange={(event) => setLoginPassword(event.target.value)}
-              className="sunken-field mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-[#ff9900] focus:ring-2 focus:ring-orange-100"
-              placeholder={labels.passwordPlaceholder}
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-
-            {authError ? <p className="mt-3 text-sm font-medium text-red-700">{authError}</p> : null}
-
-            <button
-              type="submit"
-              className="primary-button mt-5 w-full rounded-md bg-[#ff9900] px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-[#f08c00] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? labels.loggingIn : labels.login}
-            </button>
-          </form>
-        ) : (
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">{labels.registerDisabled}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{labels.registerDisabledMessage}</p>
-            <button
-              type="button"
-              onClick={() => setAuthMode("login")}
-              className="secondary-button mt-5 rounded-md border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-orange-50"
-            >
-              {labels.login}
-            </button>
-          </div>
-        )}
+        </form>
       </div>
 
       <div className="surface-panel rounded-lg border border-slate-200 bg-white p-6">
@@ -970,51 +927,83 @@ function AuthGate({
   );
 }
 
-function HistoryPanel({
+function HistoryModal({
   jobs,
   isLoading,
   onLoad,
+  onClose,
   labels,
+  language,
 }: {
   jobs: SearchJob[];
   isLoading: boolean;
   onLoad: (job: SearchJob) => void;
+  onClose: () => void;
   labels: UiCopy;
+  language: Language;
 }) {
   return (
-    <div className="surface-panel rounded-lg border border-orange-200 bg-white p-5">
-      <div className="flex items-center justify-between gap-3 border-b border-orange-100 pb-3">
-        <h2 className="text-base font-semibold text-slate-950">{labels.history}</h2>
-        {isLoading ? <span className="text-xs text-slate-500">{labels.loadingHistory}</span> : null}
-      </div>
-      {jobs.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {jobs.slice(0, 8).map((item) => (
-            <button
-              type="button"
-              key={item.job_id}
-              onClick={() => onLoad(item)}
-              className="surface-card w-full rounded-md border border-slate-200 bg-white p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-950">{item.product_keyword}</div>
-                  {item.product_features ? (
-                    <div className="mt-1 line-clamp-1 text-xs text-slate-500">{item.product_features}</div>
-                  ) : null}
-                </div>
-                <span className="rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-medium text-[#c45500]">
-                  {labels.loadHistory}
-                </span>
-              </div>
-            </button>
-          ))}
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-slate-950/30 px-4 py-20 backdrop-blur-sm">
+      <div className="surface-panel w-full max-w-xl rounded-lg border border-orange-200 bg-white p-5 shadow-2xl shadow-slate-900/20">
+        <div className="flex items-center justify-between gap-3 border-b border-orange-100 pb-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">{labels.history}</h2>
+            {isLoading ? <p className="mt-1 text-xs text-slate-500">{labels.loadingHistory}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="secondary-button rounded-md border border-orange-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+          >
+            {labels.close}
+          </button>
         </div>
-      ) : (
-        <p className="mt-3 text-sm text-slate-500">{labels.noHistory}</p>
-      )}
+        {jobs.length > 0 ? (
+          <div className="mt-3 max-h-[68vh] space-y-2 overflow-y-auto pr-1">
+            {jobs.slice(0, 20).map((item) => (
+              <button
+                type="button"
+                key={item.job_id}
+                onClick={() => onLoad(item)}
+                className="surface-card w-full rounded-md border border-slate-200 bg-white p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-950">{item.product_keyword}</div>
+                    {item.product_features ? (
+                      <div className="mt-1 line-clamp-1 text-xs text-slate-500">{item.product_features}</div>
+                    ) : null}
+                    <div className="mt-2 text-xs text-slate-500">
+                      {labels.historyTime}: {formatHistoryTime(item.created_at, language)}
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-medium text-[#c45500]">
+                    {labels.loadHistory}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-slate-500">{labels.noHistory}</p>
+        )}
+      </div>
     </div>
   );
+}
+
+function formatHistoryTime(value: string, language: Language): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function SupplierGroup({
@@ -1305,6 +1294,9 @@ function translateRecommendedAction(action: string, language: Language): string 
       "Ask for quotation and MOQ": "询价并确认 MOQ",
       "Do not shortlist until product match is verified": "产品匹配确认前不要列入候选",
       "Do not shortlist raw material listings for finished-product sourcing": "成品采购不要列入原料 listing",
+      "Do not shortlist adult-product listings for mattress air pump sourcing": "床垫充气泵采购不要列入成人用品 listing",
+      "Do not shortlist automotive tool listings for mattress air pump sourcing": "床垫充气泵采购不要列入车载工具 listing",
+      "Do not shortlist industrial pump listings for portable mattress air pump sourcing": "便携床垫充气泵采购不要列入工业泵设备 listing",
       "Verify price authenticity before contacting": "联系前先核实价格真实性",
     }[action] ?? action
   );
@@ -1362,6 +1354,9 @@ function translateRiskFlag(flag: string, language: Language): string {
       "Price is far below market median; verify quotation.": "价格明显低于市场中位数，需要核实报价。",
       "Requested device model is not visible in the product title.": "产品标题看不到指定机型。",
       "Listing appears to be tooling or equipment rather than the requested finished accessory.": "该 listing 像工具/设备，不是成品配件。",
+      "Listing appears to be adult products rather than the requested mattress air pump.": "该 listing 像成人用品，不是床垫充气泵。",
+      "Listing appears to be automotive tools rather than the requested mattress air pump.": "该 listing 像车载工具，不是床垫充气泵。",
+      "Listing appears to be industrial pump equipment rather than a portable mattress air pump.": "该 listing 像工业泵设备，不是便携床垫充气泵。",
     }[flag] ?? flag
   );
 }

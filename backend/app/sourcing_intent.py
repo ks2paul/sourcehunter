@@ -39,12 +39,12 @@ BROAD_FINISHED_PRODUCT_KEYWORDS = {
 
 SPECIFIC_PRODUCT_INTENT_KEYWORDS = {
     "床垫充气泵": {
-        "made_in_china": "portable mattress air pump rechargeable car adapter manufacturer",
-        "china_1688": "床垫 便携 充气泵 车载 充电 小型",
+        "made_in_china": "portable electric air pump for inflatable mattress rechargeable 12v dc manufacturer",
+        "china_1688": "充气床 电动充气泵 便携 充电 小型",
     },
     "充气床垫泵": {
-        "made_in_china": "portable mattress air pump rechargeable car adapter manufacturer",
-        "china_1688": "充气床垫 便携 充气泵 车载 充电 小型",
+        "made_in_china": "portable electric air pump for inflatable mattress rechargeable 12v dc manufacturer",
+        "china_1688": "气垫床 电动充气泵 便携 充电 小型",
     },
 }
 
@@ -54,10 +54,10 @@ CHINESE_FEATURE_TO_ENGLISH = {
     "小型": "compact",
     "小容量": "small capacity",
     "迷你": "mini",
-    "可车充": "car adapter",
-    "车充": "car adapter",
-    "车载": "car adapter",
-    "汽车": "car",
+    "可车充": "12v dc",
+    "车充": "12v dc",
+    "车载": "12v dc",
+    "汽车": "12v vehicle power",
     "充电款": "rechargeable",
     "充电": "rechargeable",
     "无线": "cordless",

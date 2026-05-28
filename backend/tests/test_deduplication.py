@@ -407,6 +407,66 @@ def test_deduplicate_suppliers_filters_phone_case_equipment_for_finished_case_re
     assert suppliers[0].company_name == "Case Supplier"
 
 
+def test_deduplicate_suppliers_filters_adult_products_for_mattress_air_pump_request():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/adult.html",
+            raw_supplier_id="adult-shop",
+            raw_product_name="成人用品 情趣用品 电动震动泵",
+            raw_supplier_type="factory",
+            raw_price="¥12.00",
+            raw_moq="20 pieces",
+        ),
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/pump.html",
+            raw_supplier_id="mattress-pump-shop",
+            raw_product_name="便携充电充气床电动充气泵 小型气垫床打气泵",
+            raw_supplier_type="factory",
+            raw_price="¥18.00",
+            raw_moq="20 pieces",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="床垫充气泵")
+
+    assert len(suppliers) == 1
+    assert suppliers[0].products[0].supplier_id == "mattress-pump-shop"
+
+
+def test_deduplicate_suppliers_filters_automotive_tools_for_mattress_air_pump_request():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://tool.example/product.html",
+            supplier_url="https://tool.en.made-in-china.com/",
+            raw_product_name="12V Car Tire Inflator Automotive Tool Kit with Wrench",
+            raw_company_name="Automotive Tool Supplier",
+            raw_price="US$12.00",
+            raw_moq="100 Pieces (MOQ)",
+        ),
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://pump.example/product.html",
+            supplier_url="https://pump.en.made-in-china.com/",
+            raw_product_name="Portable Electric Air Pump for Inflatable Mattress Rechargeable 12V DC",
+            raw_company_name="Mattress Pump Supplier",
+            raw_price="US$9.00",
+            raw_moq="100 Pieces (MOQ)",
+        ),
+    ]
+
+    suppliers = deduplicate_suppliers(listings, product_keyword="床垫充气泵")
+
+    assert len(suppliers) == 1
+    assert suppliers[0].company_name == "Mattress Pump Supplier"
+
+
 def test_deduplicate_suppliers_scores_optional_product_feature_match():
     listings = [
         RawListing(
