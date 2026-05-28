@@ -138,6 +138,7 @@ class Elimapi1688Adapter:
         if not product_url or not product_name or not (supplier_url or supplier_id or company_name):
             return None
 
+        supplier_type = _supplier_type_text(item, seller, nested_sources)
         return RawListing(
             platform=PLATFORM,
             source_url=source_url,
@@ -148,9 +149,8 @@ class Elimapi1688Adapter:
             raw_company_name=company_name,
             raw_price=_format_price(_first_value(item, "promotion_price", "promotionPrice", "price", "retail_price", "dropship_price")),
             raw_moq=_format_moq(_first_value(item, "moq", "minOrderQuantity", "min_order_quantity", "minimumOrderQuantity")),
-            raw_supplier_type=_string_value(item, "seller_type", "sellerType")
-            or _string_value(seller, "seller_type", "sellerType")
-            or _first_supplier_string_from_dicts(nested_sources, "seller_type", "sellerType"),
+            raw_contact_text=_verification_text(item, seller, nested_sources),
+            raw_supplier_type=supplier_type,
         )
 
 
@@ -234,6 +234,75 @@ def _company_name(item: dict[str, Any], seller: dict[str, Any], nested_sources: 
         or _string_value(seller, *supplier_node_company_keys)
         or _first_company_string_from_dicts(nested_sources, *supplier_node_company_keys)
     )
+
+
+def _supplier_type_text(item: dict[str, Any], seller: dict[str, Any], nested_sources: list[dict[str, Any]]) -> str | None:
+    keys = (
+        "seller_type",
+        "sellerType",
+        "supplier_type",
+        "supplierType",
+        "businessModel",
+        "business_model",
+        "companyType",
+        "company_type",
+        "memberType",
+        "member_type",
+        "factoryType",
+        "factory_type",
+        "shopType",
+        "shop_type",
+    )
+    text = (
+        _string_value(item, *keys)
+        or _string_value(seller, *keys)
+        or _first_supplier_string_from_dicts(nested_sources, *keys)
+    )
+    verification_text = _verification_text(item, seller, nested_sources)
+    combined = " ".join(part for part in (text, verification_text) if part)
+    return combined or None
+
+
+def _verification_text(item: dict[str, Any], seller: dict[str, Any], nested_sources: list[dict[str, Any]]) -> str | None:
+    keys = (
+        "factoryInspection",
+        "factory_inspection",
+        "factoryCertification",
+        "factory_certification",
+        "factoryCertified",
+        "factory_certified",
+        "isFactory",
+        "is_factory",
+        "isManufacturer",
+        "is_manufacturer",
+        "manufactureType",
+        "manufacture_type",
+        "certification",
+        "certifications",
+        "badges",
+        "tags",
+        "serviceTags",
+        "service_tags",
+    )
+    values: list[str] = []
+    for source in (item, seller, *nested_sources):
+        if _looks_like_product_node(source):
+            continue
+        for key in keys:
+            value = source.get(key)
+            if value in (None, "", False):
+                continue
+            if value is True:
+                values.append(key)
+                continue
+            if isinstance(value, (list, tuple)):
+                values.extend(str(entry).strip() for entry in value if str(entry).strip())
+            elif isinstance(value, dict):
+                values.extend(str(entry).strip() for entry in value.values() if str(entry).strip())
+            else:
+                values.append(str(value).strip())
+    compacted = " ".join(dict.fromkeys(value for value in values if value))
+    return compacted or None
 
 
 def _first_company_string_from_dicts(dicts: list[dict[str, Any]], *keys: str) -> str | None:

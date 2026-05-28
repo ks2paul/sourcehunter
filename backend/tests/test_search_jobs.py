@@ -121,6 +121,19 @@ def test_get_search_job_api_returns_created_job():
     assert "相框" in payload["keyword_expansion"]["chinese_keywords"]
 
 
+def test_list_search_jobs_api_returns_recent_jobs():
+    client = authenticated_client()
+    first = client.post("/api/search-jobs", json={"product_keyword": "handheld fan"}).json()
+    second = client.post("/api/search-jobs", json={"product_keyword": "picture frame"}).json()
+
+    response = client.get("/api/search-jobs")
+
+    assert response.status_code == 200
+    ids = [item["job_id"] for item in response.json()]
+    assert second["job_id"] in ids
+    assert first["job_id"] in ids
+
+
 def test_get_search_job_api_returns_404_for_missing_job():
     client = authenticated_client()
 
@@ -238,6 +251,35 @@ def test_platform_search_keywords_append_optional_product_features():
 
     assert platform_keywords["Made-in-China"] == "iphone 17 pro max phone case manufacturer silicone colorful magsafe"
     assert platform_keywords["1688"] == "苹果17 pro max 手机壳 厂家 工厂 源头厂家 OEM silicone colorful magsafe"
+
+
+def test_platform_search_keywords_translate_chinese_features_for_made_in_china():
+    from app.routes import search_jobs
+
+    job = SearchJob(
+        job_id="job_feature_translate",
+        product_keyword="床垫充气泵",
+        product_features="可移动，可车充，充电款",
+        target_price=None,
+        moq_preference=None,
+        supplier_preference=SupplierPreference.FACTORY_PREFERRED,
+        status=SearchJobStatus.COMPLETED,
+        progress=SearchProgress(stage="keyword_expansion_completed", message="done"),
+        keyword_expansion=KeywordExpansion(
+            english_keywords=["mattress air pump"],
+            chinese_keywords=["床垫充气泵"],
+            variation_keywords=[],
+            confidence=0.9,
+            source="deterministic_v1",
+        ),
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+
+    keywords = search_jobs._platform_search_keywords(job)
+
+    assert keywords["Made-in-China"] == "portable mattress air pump rechargeable car adapter manufacturer"
+    assert keywords["1688"] == "床垫 便携 充气泵 车载 充电 小型 厂家 工厂 源头厂家 OEM 可移动，可车充，充电款"
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):

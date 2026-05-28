@@ -136,3 +136,23 @@ def test_elimapi_1688_does_not_use_product_title_as_company_name():
     assert listing is not None
     assert listing.raw_product_name == "洗发水沐浴露套装"
     assert listing.raw_company_name is None
+
+
+def test_elimapi_1688_extracts_factory_certification_signals():
+    listing = Elimapi1688Adapter.build_listing(
+        {
+            "id": "factory-cert-1",
+            "title": "便携充电床垫充气泵",
+            "url": "https://detail.1688.com/offer/factory-cert-1.html",
+            "shop_id": "shop-cert",
+            "shopInfo": {
+                "shopName": "义乌真实电器厂",
+                "isFactory": True,
+                "badges": ["实力工厂", "深度验厂"],
+            },
+        }
+    )
+
+    assert listing is not None
+    assert "isFactory" in listing.raw_supplier_type
+    assert "实力工厂" in listing.raw_supplier_type

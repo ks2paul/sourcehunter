@@ -239,6 +239,40 @@ def test_deduplicate_suppliers_uses_1688_product_title_when_company_name_is_unav
     assert supplier.company_name == "洗发水沐浴露套装"
 
 
+def test_deduplicate_suppliers_uses_made_in_china_product_title_when_company_name_is_unavailable():
+    listings = [
+        RawListing(
+            platform="Made-in-China",
+            source_url="https://www.made-in-china.com/search",
+            product_url="https://pump.example/product.html",
+            supplier_url="https://pump.en.made-in-china.com/",
+            raw_product_name="Portable Rechargeable Mattress Air Pump",
+            raw_company_name=None,
+        )
+    ]
+
+    supplier = deduplicate_suppliers(listings, product_keyword="mattress air pump")[0]
+
+    assert supplier.company_name == "Portable Rechargeable Mattress Air Pump"
+
+
+def test_deduplicate_suppliers_treats_1688_factory_certification_as_verified_factory():
+    listings = [
+        RawListing(
+            platform="1688",
+            source_url="https://openapi.elim.asia/v1/products/search",
+            product_url="https://detail.1688.com/offer/1.html",
+            raw_supplier_id="certified-factory-shop",
+            raw_product_name="便携充电床垫充气泵",
+            raw_supplier_type="实力工厂 深度验厂",
+        )
+    ]
+
+    supplier = deduplicate_suppliers(listings, product_keyword="床垫充气泵", supplier_preference="Factory Only")[0]
+
+    assert supplier.supplier_type == "Verified Factory"
+
+
 def test_deduplicate_suppliers_boosts_unverified_1688_factory_title_signal():
     listings = [
         RawListing(

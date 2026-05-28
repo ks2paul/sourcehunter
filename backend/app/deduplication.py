@@ -167,7 +167,7 @@ def _build_supplier(
 def _supplier_display_fallback(listings: list[RawListing]) -> str:
     product_name = next((listing.raw_product_name for listing in listings if listing.raw_product_name), None)
     platform = next((listing.platform for listing in listings if listing.platform), None)
-    if product_name and platform == "1688":
+    if product_name:
         return product_name
     supplier_id = next((listing.raw_supplier_id for listing in listings if listing.raw_supplier_id), None)
     if supplier_id and platform == "1688":
@@ -395,7 +395,7 @@ def _factory_likelihood_score(
     listings: list[RawListing] | None = None,
     max_score: int = 20,
 ) -> int:
-    if listings and any((listing.raw_supplier_type or "").lower() == "factory" for listing in listings):
+    if listings and any(_is_verified_factory_type(listing.raw_supplier_type) for listing in listings):
         return max_score
     if listings and _has_1688_factory_signal(listings):
         return round(max_score * 0.7)
@@ -432,7 +432,7 @@ def _primary_platform(listings: list[RawListing]) -> str:
 
 def _supplier_type(listings: list[RawListing]) -> str:
     supplier_types = {(listing.raw_supplier_type or "").lower() for listing in listings}
-    if "factory" in supplier_types:
+    if any(_is_verified_factory_type(listing.raw_supplier_type) for listing in listings):
         return "Verified Factory"
     if _has_1688_factory_signal(listings):
         return "Factory Signal (Unverified)"
@@ -441,6 +441,31 @@ def _supplier_type(listings: list[RawListing]) -> str:
     if "seller" in supplier_types:
         return "Verified Seller"
     return "Supplier Type Unknown"
+
+
+def _is_verified_factory_type(value: str | None) -> bool:
+    normalized = _normalize_text(value)
+    if not normalized:
+        return False
+    compact = re.sub(r"\s+", "", normalized)
+    strong_certification_terms = (
+        "isfactory",
+        "ismanufacturer",
+        "factorycertified",
+        "factorycertification",
+        "factoryinspection",
+        "工厂认证",
+        "实力工厂",
+        "牛头",
+        "牛头工厂",
+        "深度验厂",
+        "验厂",
+    )
+    if any(term in compact for term in strong_certification_terms):
+        return True
+    verified_factory_terms = ("factory", "manufacturer", "manufacture", "生产厂家", "生产厂商", "源头工厂", "源头厂家", "厂家", "工厂")
+    trader_terms = ("merchant", "seller", "trading", "trade", "经销", "贸易")
+    return any(term in compact for term in verified_factory_terms) and not any(term in compact for term in trader_terms)
 
 
 def _has_1688_factory_signal(listings: list[RawListing]) -> bool:

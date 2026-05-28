@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { createSearchJob, getCurrentUser, getRawListings, getUniqueSuppliers, login, logout } from "@/lib/api";
+import { createSearchJob, getCurrentUser, getRawListings, getSearchJobs, getUniqueSuppliers, login, logout } from "@/lib/api";
 import { downloadCsv, suppliersToCsv } from "@/lib/exportSuppliers";
 import { buildRfqDraft } from "@/lib/rfq";
 import { sortSuppliers, type SupplierSortMode } from "@/lib/supplierFilters";
@@ -91,6 +91,11 @@ const copy = {
     registerDisabled: "注册暂未开放",
     registerDisabledMessage: "目前 SourceHunter 只开放 admin 内部账号。未来 SaaS 版本会开放团队注册。",
     signedInAs: "已登录",
+    reset: "重置",
+    history: "历史记录",
+    noHistory: "暂无历史记录。",
+    loadHistory: "载入",
+    loadingHistory: "载入历史中...",
     accessLabel: "权限",
     accessValue: "仅管理员",
     modeLabel: "模式",
@@ -176,6 +181,11 @@ const copy = {
     registerDisabled: "Registration is closed",
     registerDisabledMessage: "SourceHunter currently only allows the admin account. Team registration can be added in the future SaaS version.",
     signedInAs: "Signed in",
+    reset: "Reset",
+    history: "History",
+    noHistory: "No history yet.",
+    loadHistory: "Load",
+    loadingHistory: "Loading history...",
     accessLabel: "Access",
     accessValue: "Admin only",
     modeLabel: "Mode",
@@ -211,6 +221,8 @@ export default function HomePage() {
   const [loginUsername, setLoginUsername] = useState("admin");
   const [loginPassword, setLoginPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [history, setHistory] = useState<SearchJob[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const t = copy[language];
   const sortedPlatformGroups = useMemo(
     () =>
@@ -234,6 +246,9 @@ export default function HomePage() {
       .then((user) => {
         if (isMounted) {
           setAuthUser(user);
+          if (user) {
+            void refreshHistory();
+          }
         }
       })
       .catch(() => {
@@ -249,6 +264,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -257,6 +273,7 @@ export default function HomePage() {
     setAuthError(null);
     try {
       setAuthUser(await login(loginUsername, loginPassword));
+      await refreshHistory();
       setLoginPassword("");
     } catch {
       setAuthError(t.loginFailed);
@@ -272,6 +289,44 @@ export default function HomePage() {
     setSuppliers(null);
     setRawListings(null);
     setRfqDraft(null);
+    setHistory([]);
+  }
+
+  async function refreshHistory() {
+    setIsLoadingHistory(true);
+    try {
+      setHistory(await getSearchJobs());
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  function handleReset() {
+    setProductKeyword("");
+    setProductFeatures("");
+    setTargetPrice("");
+    setMoqPreference("");
+    setSupplierPreference("Factory Preferred");
+    setJob(null);
+    setSuppliers(null);
+    setRawListings(null);
+    setRfqDraft(null);
+    setCopyMessage(null);
+    setError(null);
+  }
+
+  function handleLoadHistoryItem(historyJob: SearchJob) {
+    setProductKeyword(historyJob.product_keyword);
+    setProductFeatures(historyJob.product_features ?? "");
+    setTargetPrice(historyJob.target_price ? String(historyJob.target_price) : "");
+    setMoqPreference(historyJob.moq_preference ? String(historyJob.moq_preference) : "");
+    setSupplierPreference(historyJob.supplier_preference);
+    setJob(historyJob);
+    setSuppliers(null);
+    setRawListings(null);
+    setRfqDraft(null);
+    setCopyMessage(null);
+    setError(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -293,6 +348,7 @@ export default function HomePage() {
         product_image_id: null,
       });
       setJob(createdJob);
+      await refreshHistory();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Search request failed");
     } finally {
@@ -520,7 +576,21 @@ export default function HomePage() {
             >
               {isLoading ? t.creatingJob : t.createJob}
             </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="secondary-button mt-3 w-full rounded-md border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-orange-50"
+            >
+              {t.reset}
+            </button>
           </form>
+
+          <HistoryPanel
+            jobs={history}
+            isLoading={isLoadingHistory}
+            onLoad={handleLoadHistoryItem}
+            labels={t}
+          />
 
           {job ? (
             <div className="space-y-4 rounded-lg border border-orange-200 bg-white p-5 surface-panel">
@@ -897,6 +967,53 @@ function AuthGate({
         </div>
       </div>
     </section>
+  );
+}
+
+function HistoryPanel({
+  jobs,
+  isLoading,
+  onLoad,
+  labels,
+}: {
+  jobs: SearchJob[];
+  isLoading: boolean;
+  onLoad: (job: SearchJob) => void;
+  labels: UiCopy;
+}) {
+  return (
+    <div className="surface-panel rounded-lg border border-orange-200 bg-white p-5">
+      <div className="flex items-center justify-between gap-3 border-b border-orange-100 pb-3">
+        <h2 className="text-base font-semibold text-slate-950">{labels.history}</h2>
+        {isLoading ? <span className="text-xs text-slate-500">{labels.loadingHistory}</span> : null}
+      </div>
+      {jobs.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {jobs.slice(0, 8).map((item) => (
+            <button
+              type="button"
+              key={item.job_id}
+              onClick={() => onLoad(item)}
+              className="surface-card w-full rounded-md border border-slate-200 bg-white p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">{item.product_keyword}</div>
+                  {item.product_features ? (
+                    <div className="mt-1 line-clamp-1 text-xs text-slate-500">{item.product_features}</div>
+                  ) : null}
+                </div>
+                <span className="rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-medium text-[#c45500]">
+                  {labels.loadHistory}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-slate-500">{labels.noHistory}</p>
+      )}
+    </div>
   );
 }
 

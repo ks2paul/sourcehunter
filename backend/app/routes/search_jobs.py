@@ -6,12 +6,12 @@ from app.models import RawListingsResponse, SearchJob, SearchJobCreate, Supplier
 from app.scraping.platforms.elimapi_1688 import Elimapi1688Adapter
 from app.scraping.platforms.made_in_china import MadeInChinaAdapter
 from app.scraping.worker import ScrapingWorker
-from app.sourcing_intent import china_1688_finished_product_keyword, made_in_china_finished_product_keyword
+from app.sourcing_intent import china_1688_finished_product_keyword, made_in_china_feature_terms, made_in_china_finished_product_keyword
 from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"], dependencies=[Depends(require_authenticated_user)])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 14
+SUPPLIER_CACHE_VERSION = 15
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -21,6 +21,11 @@ def create_scraping_worker() -> ScrapingWorker:
 @router.post("", response_model=SearchJob, status_code=status.HTTP_201_CREATED)
 async def create_search_job(request: SearchJobCreate) -> SearchJob:
     return await repository.create(request)
+
+
+@router.get("", response_model=list[SearchJob])
+def list_search_jobs() -> list[SearchJob]:
+    return repository.list_recent(limit=20)
 
 
 @router.get("/{job_id}", response_model=SearchJob)
@@ -114,7 +119,7 @@ async def _search_for_job(job: SearchJob):
 
 def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
     return {
-        platform: _append_features(keyword, job.product_features)
+        platform: _append_features(keyword, job.product_features, platform=platform)
         for platform, keyword in _platform_match_keywords(job).items()
     }
 
@@ -133,13 +138,21 @@ def _platform_match_keywords(job: SearchJob) -> dict[str, str]:
     }
 
 
-def _append_features(keyword: str, product_features: str | None) -> str:
-    features = " ".join((product_features or "").split())
+def _append_features(keyword: str, product_features: str | None, platform: str | None = None) -> str:
+    if platform == "Made-in-China":
+        features = made_in_china_feature_terms(product_features)
+    else:
+        features = " ".join((product_features or "").split())
     if not features:
         return keyword
     normalized_keyword = keyword.lower()
     if features.lower() in normalized_keyword:
         return keyword
+    if platform == "Made-in-China":
+        feature_parts = [part for part in features.split() if part.lower() not in normalized_keyword]
+        if not feature_parts:
+            return keyword
+        return f"{keyword} {' '.join(feature_parts)}"
     return f"{keyword} {features}"
 
 

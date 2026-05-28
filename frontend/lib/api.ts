@@ -31,6 +31,30 @@ export async function createSearchJob(payload: CreateSearchJobPayload): Promise<
   return response.json();
 }
 
+export async function getSearchJobs(): Promise<SearchJob[]> {
+  const response = await fetch(apiUrl("/api/search-jobs"), {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(`History request failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function getSearchJob(jobId: string): Promise<SearchJob> {
+  const response = await fetch(apiUrl(`/api/search-jobs/${jobId}`), {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Search job request failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export async function getRawListings(jobId: string): Promise<RawListingsResponse> {
   const response = await fetch(apiUrl(`/api/search-jobs/${jobId}/raw-listings`), {
     credentials: "include",

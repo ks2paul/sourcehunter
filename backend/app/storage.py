@@ -43,6 +43,18 @@ class SearchJobRepository:
             return None
         return SearchJob.model_validate_json(row[0])
 
+    def list_recent(self, limit: int = 20) -> list[SearchJob]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT payload FROM search_jobs
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [SearchJob.model_validate_json(row[0]) for row in rows]
+
     def save_supplier_result(self, job_id: str, payload: dict) -> None:
         self._save_result(job_id=job_id, result_type="suppliers", payload=payload)
 
