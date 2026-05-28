@@ -29,6 +29,13 @@ const copy = {
     englishKeywords: "英文关键词",
     chineseKeywords: "中文关键词",
     variationKeywords: "变体关键词",
+    aiIntent: "AI 需求理解",
+    normalizedProduct: "标准产品",
+    coreFeatures: "核心特征",
+    supportingFeatures: "辅助特征",
+    excludedCategories: "排除类别",
+    madeInChinaSearchTerm: "Made-in-China 搜索词",
+    china1688SearchTerm: "1688 搜索词",
     result: "结果",
     createPrompt: "创建搜索任务后查看关键词扩展。",
     jobId: "任务 ID",
@@ -122,6 +129,13 @@ const copy = {
     englishKeywords: "English keywords",
     chineseKeywords: "Chinese keywords",
     variationKeywords: "Variation keywords",
+    aiIntent: "AI intent",
+    normalizedProduct: "Normalized product",
+    coreFeatures: "Core features",
+    supportingFeatures: "Supporting features",
+    excludedCategories: "Excluded categories",
+    madeInChinaSearchTerm: "Made-in-China search term",
+    china1688SearchTerm: "1688 search term",
     result: "Result",
     createPrompt: "Create a search job to view keyword expansion.",
     jobId: "Job ID",
@@ -633,6 +647,8 @@ export default function HomePage() {
                 <Info label={t.stage} value={translateStage(job.progress.stage, language)} />
                 <Info label={t.confidence} value={`${Math.round(job.keyword_expansion.confidence * 100)}%`} />
               </div>
+
+              {job.sourcing_intent ? <SourcingIntentPanel job={job} labels={t} /> : null}
 
               <div className="flex flex-wrap gap-3">
                 <button
@@ -1162,6 +1178,63 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SourcingIntentPanel({ job, labels }: { job: SearchJob; labels: UiCopy }) {
+  const intent = job.sourcing_intent;
+  if (!intent) {
+    return null;
+  }
+  return (
+    <section className="surface-card rounded-lg border border-orange-200 bg-orange-50/40 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-950">{labels.aiIntent}</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-700">{intent.product_summary}</p>
+        </div>
+        <span className="rounded-md border border-orange-200 bg-white px-2 py-1 text-xs font-medium text-[#c45500]">
+          {Math.round(intent.confidence * 100)}%
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <IntentField label={labels.normalizedProduct} value={intent.normalized_product_keyword} />
+        <IntentField label={labels.madeInChinaSearchTerm} value={intent.platform_search_terms.made_in_china} />
+        <IntentField label={labels.china1688SearchTerm} value={intent.platform_search_terms.china_1688} />
+        <IntentTags label={labels.coreFeatures} values={intent.core_features} />
+        <IntentTags label={labels.supportingFeatures} values={intent.supporting_features} />
+        <IntentTags label={labels.excludedCategories} values={intent.excluded_categories} />
+      </div>
+    </section>
+  );
+}
+
+function IntentField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1 break-words text-sm font-semibold text-slate-900">{value || "-"}</div>
+    </div>
+  );
+}
+
+function IntentTags({ label, values }: { label: string; values: string[] }) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {values.length > 0 ? (
+          values.map((value) => (
+            <span key={value} className="rounded-md border border-orange-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+              {value}
+            </span>
+          ))
+        ) : (
+          <span className="text-sm text-slate-500">-</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StatusNotice({ title, message, tone }: { title: string; message: string; tone: "blue" }) {
   const toneClassName = {
     blue: "border-orange-200 bg-orange-50 text-slate-800",
@@ -1258,6 +1331,7 @@ function translateStage(stage: string, language: Language): string {
   return (
     {
       created: "已创建",
+      intent_analysis_completed: "需求解析完成",
       keyword_expansion_completed: "关键词扩展完成",
       supplier_search_completed: "供应商搜索完成",
       raw_listing_retrieval_completed: "原始 listing 抓取完成",

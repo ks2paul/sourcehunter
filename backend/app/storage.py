@@ -6,6 +6,7 @@ from uuid import uuid4
 from app.config import get_settings
 from app.keyword_expansion import expand_keywords
 from app.models import SearchJob, SearchJobCreate, SearchJobStatus, SearchProgress, utc_now
+from app.sourcing_analysis import analyze_sourcing_intent
 
 
 class SearchJobRepository:
@@ -17,6 +18,11 @@ class SearchJobRepository:
         now = utc_now()
         job_id = f"job_{uuid4().hex}"
         keyword_expansion = await expand_keywords(request.product_keyword)
+        sourcing_intent = await analyze_sourcing_intent(
+            product_keyword=request.product_keyword,
+            product_features=request.product_features,
+            supplier_preference=request.supplier_preference,
+        )
         job = SearchJob(
             job_id=job_id,
             product_keyword=request.product_keyword.strip(),
@@ -26,10 +32,11 @@ class SearchJobRepository:
             supplier_preference=request.supplier_preference,
             status=SearchJobStatus.COMPLETED,
             progress=SearchProgress(
-                stage="keyword_expansion_completed",
-                message="Keyword expansion completed. Made-in-China raw listing retrieval is available.",
+                stage="intent_analysis_completed",
+                message="AI sourcing intent analysis and keyword expansion completed.",
             ),
             keyword_expansion=keyword_expansion,
+            sourcing_intent=sourcing_intent,
             created_at=now,
             updated_at=now,
         )

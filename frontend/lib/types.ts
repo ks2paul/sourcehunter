@@ -12,6 +12,20 @@ export type KeywordExpansion = {
   source: "deterministic_v1" | "openai_compatible";
 };
 
+export type SourcingIntent = {
+  normalized_product_keyword: string;
+  product_summary: string;
+  core_features: string[];
+  supporting_features: string[];
+  excluded_categories: string[];
+  platform_search_terms: {
+    made_in_china: string;
+    china_1688: string;
+  };
+  confidence: number;
+  source: "deterministic_v1" | "openai_compatible";
+};
+
 export type SearchJob = {
   job_id: string;
   product_keyword: string;
@@ -25,6 +39,7 @@ export type SearchJob = {
     message: string;
   };
   keyword_expansion: KeywordExpansion;
+  sourcing_intent: SourcingIntent | null;
   created_at: string;
   updated_at: string;
   error_summary: string | null;

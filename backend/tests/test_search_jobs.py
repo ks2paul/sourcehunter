@@ -35,6 +35,9 @@ async def test_search_job_repository_creates_completed_job():
     assert job.product_features == "magsafe silicone"
     assert job.keyword_expansion.english_keywords[0] == "handheld fan"
     assert "手持风扇" in job.keyword_expansion.chinese_keywords
+    assert job.sourcing_intent is not None
+    assert job.sourcing_intent.normalized_product_keyword == "handheld fan"
+    assert "magsafe" in job.sourcing_intent.core_features
 
 
 @pytest.mark.anyio
@@ -107,6 +110,7 @@ def test_create_search_job_api_returns_job():
     assert payload["status"] == "completed"
     assert payload["product_features"] is None
     assert payload["keyword_expansion"]["english_keywords"][0] == "handheld fan"
+    assert payload["sourcing_intent"]["normalized_product_keyword"] == "handheld fan"
 
 
 def test_get_search_job_api_returns_created_job():
@@ -280,6 +284,27 @@ def test_platform_search_keywords_translate_chinese_features_for_made_in_china()
 
     assert keywords["Made-in-China"] == "portable electric air pump for inflatable mattress rechargeable 12v dc manufacturer"
     assert keywords["1688"] == "充气床 电动充气泵 便携 充电 小型 厂家 工厂 源头厂家 OEM 可移动，可车充，充电款"
+
+
+@pytest.mark.anyio
+async def test_created_job_uses_sourcing_intent_platform_terms():
+    from app.routes import search_jobs
+
+    repository = SearchJobRepository()
+    job = await repository.create(
+        SearchJobCreate(
+            product_keyword="床垫充气泵",
+            product_features="可移动，可车充，充电款",
+            supplier_preference=SupplierPreference.FACTORY_PREFERRED,
+        )
+    )
+
+    keywords = search_jobs._platform_search_keywords(job)
+
+    assert "portable electric air pump for inflatable mattress" in keywords["Made-in-China"]
+    assert "12v dc" in keywords["Made-in-China"]
+    assert "car adapter" not in keywords["Made-in-China"]
+    assert "充气床" in keywords["1688"]
 
 
 def test_get_raw_listings_returns_source_backed_result(monkeypatch):

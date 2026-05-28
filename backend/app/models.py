@@ -36,6 +36,22 @@ class KeywordExpansion(BaseModel):
     source: Literal["deterministic_v1", "openai_compatible"]
 
 
+class PlatformSearchTerms(BaseModel):
+    made_in_china: str
+    china_1688: str
+
+
+class SourcingIntent(BaseModel):
+    normalized_product_keyword: str
+    product_summary: str
+    core_features: list[str] = Field(default_factory=list)
+    supporting_features: list[str] = Field(default_factory=list)
+    excluded_categories: list[str] = Field(default_factory=list)
+    platform_search_terms: PlatformSearchTerms
+    confidence: float = Field(ge=0, le=1)
+    source: Literal["deterministic_v1", "openai_compatible"]
+
+
 class SearchProgress(BaseModel):
     stage: str
     message: str
@@ -51,6 +67,7 @@ class SearchJob(BaseModel):
     status: SearchJobStatus
     progress: SearchProgress
     keyword_expansion: KeywordExpansion
+    sourcing_intent: SourcingIntent | None = None
     created_at: datetime
     updated_at: datetime
     error_summary: str | None = None

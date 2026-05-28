@@ -11,7 +11,7 @@ from app.storage import SearchJobRepository
 
 router = APIRouter(prefix="/api/search-jobs", tags=["search-jobs"], dependencies=[Depends(require_authenticated_user)])
 repository = SearchJobRepository()
-SUPPLIER_CACHE_VERSION = 15
+SUPPLIER_CACHE_VERSION = 16
 
 
 def create_scraping_worker() -> ScrapingWorker:
@@ -125,6 +125,11 @@ def _platform_search_keywords(job: SearchJob) -> dict[str, str]:
 
 
 def _platform_match_keywords(job: SearchJob) -> dict[str, str]:
+    if job.sourcing_intent:
+        return {
+            "Made-in-China": job.sourcing_intent.platform_search_terms.made_in_china,
+            "1688": job.sourcing_intent.platform_search_terms.china_1688,
+        }
     return {
         "Made-in-China": made_in_china_finished_product_keyword(
             job.product_keyword,
