@@ -1,9 +1,21 @@
 import type { AuthUser, CreateSearchJobPayload, RawListingsResponse, SearchJob, SuppliersResponse } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return "http://127.0.0.1:8000";
+}
+
+function apiUrl(path: string): string {
+  return `${getApiBaseUrl()}${path}`;
+}
 
 export async function createSearchJob(payload: CreateSearchJobPayload): Promise<SearchJob> {
-  const response = await fetch(`${API_BASE_URL}/api/search-jobs`, {
+  const response = await fetch(apiUrl("/api/search-jobs"), {
     method: "POST",
     credentials: "include",
     headers: {
@@ -20,7 +32,7 @@ export async function createSearchJob(payload: CreateSearchJobPayload): Promise<
 }
 
 export async function getRawListings(jobId: string): Promise<RawListingsResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/search-jobs/${jobId}/raw-listings`, {
+  const response = await fetch(apiUrl(`/api/search-jobs/${jobId}/raw-listings`), {
     credentials: "include",
   });
 
@@ -32,7 +44,7 @@ export async function getRawListings(jobId: string): Promise<RawListingsResponse
 }
 
 export async function getUniqueSuppliers(jobId: string): Promise<SuppliersResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/search-jobs/${jobId}/suppliers`, {
+  const response = await fetch(apiUrl(`/api/search-jobs/${jobId}/suppliers`), {
     credentials: "include",
   });
 
@@ -44,7 +56,7 @@ export async function getUniqueSuppliers(jobId: string): Promise<SuppliersRespon
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  const response = await fetch(apiUrl("/api/auth/login"), {
     method: "POST",
     credentials: "include",
     headers: {
@@ -61,7 +73,7 @@ export async function login(username: string, password: string): Promise<AuthUse
 }
 
 export async function logout(): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+  const response = await fetch(apiUrl("/api/auth/logout"), {
     method: "POST",
     credentials: "include",
   });
@@ -72,7 +84,7 @@ export async function logout(): Promise<void> {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+  const response = await fetch(apiUrl("/api/auth/me"), {
     credentials: "include",
   });
 
